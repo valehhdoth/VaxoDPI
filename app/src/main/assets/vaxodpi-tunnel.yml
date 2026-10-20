@@ -1,6 +1,6 @@
 tunnel:
   name: tun0
-  mtu: 8500
+  mtu: 1500
   multi-queue: false
   ipv4: 198.18.0.1
   ipv6: 'fc00::1'
@@ -12,4 +12,4 @@ socks5:
 
 misc:
   task-stack-size: 81920
-  log-level: warn
+  log-level: info
