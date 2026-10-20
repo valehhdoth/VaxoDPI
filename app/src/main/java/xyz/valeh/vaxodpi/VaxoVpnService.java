@@ -121,6 +121,8 @@ public final class VaxoVpnService extends VpnService {
             return START_STICKY;
         }
 
+        startFg();
+
         try {
             startTunnel();
             return START_STICKY;
@@ -212,8 +214,110 @@ public final class VaxoVpnService extends VpnService {
 
         flog("VPN ve tunel baslatma cagrilari tamamlandi");
         startDiagnostics();
+        startNotifUpdater();
         sendStatus("connected",
                 "Tünel başlatıldı; trafik aktarımı henüz doğrulanmadı.");
+    }
+
+    private static final int NOTIF_ID = 7001;
+    private static final String CHANNEL_ID = "vaxodpi_vpn";
+    private Thread notifThread;
+
+    private String nt(String tr, String en, String ru) {
+        String sys = java.util.Locale.getDefault().getLanguage();
+        int d = "tr".equals(sys) ? 0 : ("ru".equals(sys) ? 2 : 1);
+        int l = getSharedPreferences("vaxodpi", MODE_PRIVATE).getInt("lang", d);
+        return l == 0 ? tr : (l == 2 ? ru : en);
+    }
+
+    private android.app.Notification buildNotif(String text) {
+        android.app.NotificationManager nm = (android.app.NotificationManager)
+                getSystemService(NOTIFICATION_SERVICE);
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            nm.createNotificationChannel(new android.app.NotificationChannel(
+                    CHANNEL_ID, "VaxoDPI",
+                    android.app.NotificationManager.IMPORTANCE_LOW));
+        }
+        int fl = android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                | android.app.PendingIntent.FLAG_IMMUTABLE;
+        Intent open = new Intent(this, MainActivity.class);
+        open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        android.app.PendingIntent openPi =
+                android.app.PendingIntent.getActivity(this, 0, open, fl);
+        Intent stop = new Intent(this, VaxoVpnService.class);
+        stop.setAction(ACTION_STOP);
+        android.app.PendingIntent stopPi =
+                android.app.PendingIntent.getService(this, 1, stop, fl);
+
+        android.app.Notification.Builder b = android.os.Build.VERSION.SDK_INT >= 26
+                ? new android.app.Notification.Builder(this, CHANNEL_ID)
+                : new android.app.Notification.Builder(this);
+        int icon = getResources().getIdentifier("ic_stat", "drawable", getPackageName());
+        b.setSmallIcon(icon != 0 ? icon : android.R.drawable.ic_lock_lock)
+         .setContentTitle("VaxoDPI - " + nt("aktif", "active", "активен"))
+         .setContentText(text)
+         .setContentIntent(openPi)
+         .setOngoing(true)
+         .setOnlyAlertOnce(true)
+         .setShowWhen(false)
+         .addAction(0, nt("Bağlantıyı kes", "Disconnect", "Отключить"), stopPi);
+        return b.build();
+    }
+
+    private void startFg() {
+        try {
+            android.app.Notification n = buildNotif(
+                    nt("Başlatılıyor…", "Starting…", "Запуск…"));
+            if (android.os.Build.VERSION.SDK_INT >= 34) {
+                startForeground(NOTIF_ID, n,
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            } else {
+                startForeground(NOTIF_ID, n);
+            }
+        } catch (Throwable e) {
+            flog("startForeground hatasi: " + e);
+        }
+    }
+
+    private void startNotifUpdater() {
+        final long start = android.os.SystemClock.elapsedRealtime();
+        Thread t = new Thread(() -> {
+            long lastTx = 0, lastRx = 0, lastT = 0;
+            while (running) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                try {
+                    long[] st = TProxyService.TProxyGetStats();
+                    if (st == null || st.length < 4) continue;
+                    long now = android.os.SystemClock.elapsedRealtime();
+                    double dl = 0, ul = 0;
+                    if (lastT > 0 && now > lastT) {
+                        double dt = (now - lastT) / 1000.0;
+                        dl = Math.max(0, st[3] - lastRx) * 8.0 / 1e6 / dt;
+                        ul = Math.max(0, st[1] - lastTx) * 8.0 / 1e6 / dt;
+                    }
+                    lastT = now; lastTx = st[1]; lastRx = st[3];
+                    long s = (now - start) / 1000;
+                    double mb = (st[1] + st[3]) / 1048576.0;
+                    String data = mb < 1024
+                            ? String.format(java.util.Locale.US, "%.1f MB", mb)
+                            : String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0);
+                    String text = String.format(java.util.Locale.US,
+                            "%02d:%02d:%02d  ↓ %.2f  ↑ %.2f Mbps  %s",
+                            s / 3600, (s / 60) % 60, s % 60, dl, ul, data);
+                    if (!running) return;
+                    ((android.app.NotificationManager)
+                            getSystemService(NOTIFICATION_SERVICE))
+                            .notify(NOTIF_ID, buildNotif(text));
+                } catch (Throwable ignored) {
+                }
+            }
+        }, "VaxoDPI-Notif");
+        notifThread = t;
+        t.start();
     }
 
     private String[] buildArgs() {
@@ -249,6 +353,16 @@ public final class VaxoVpnService extends VpnService {
         flog("stopTunnel cagrildi");
         boolean wasRunning = running || tunnelStarted;
         running = false;
+
+        Thread nthr = notifThread;
+        notifThread = null;
+        if (nthr != null) nthr.interrupt();
+        try {
+            stopForeground(true);
+            ((android.app.NotificationManager)
+                    getSystemService(NOTIFICATION_SERVICE)).cancel(NOTIF_ID);
+        } catch (Throwable ignored) {
+        }
 
         if (tunnelStarted) {
             try {

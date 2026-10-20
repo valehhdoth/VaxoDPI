@@ -1029,6 +1029,12 @@ public class MainActivity extends Activity {
     private void startRealVpn() {
         applyState(State.CONNECTING);
 
+        if (android.os.Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 7302);
+        }
+
         try {
             realServiceStarted = true;
             startService(new Intent(this, VaxoVpnService.class));
