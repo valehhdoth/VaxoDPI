@@ -132,7 +132,7 @@ public final class VaxoVpnService extends VpnService {
             tunnelStarted = true;
         } catch (Throwable e) {
             try {
-                android.system.Os.close(tunFd);
+                ParcelFileDescriptor.adoptFd(tunFd).close();
             } catch (Throwable ignored) {
             }
             throw new IOException("Hev tüneli başlatılamadı.", e);
