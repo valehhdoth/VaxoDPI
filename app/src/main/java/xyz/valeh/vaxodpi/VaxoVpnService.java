@@ -38,6 +38,63 @@ public final class VaxoVpnService extends VpnService {
     private volatile int proxyFd = -1;
     private boolean tunnelStarted;
 
+    private final StringBuilder dbg = new StringBuilder();
+
+    private synchronized void flog(String msg) {
+        Log.i(TAG, msg);
+        dbg.append(new java.text.SimpleDateFormat("HH:mm:ss",
+                java.util.Locale.US).format(new java.util.Date()))
+           .append(' ').append(msg).append('\n');
+        try {
+            android.content.ClipboardManager cm =
+                (android.content.ClipboardManager)
+                    getSystemService(CLIPBOARD_SERVICE);
+            cm.setPrimaryClip(android.content.ClipData.newPlainText(
+                    "vaxolog", dbg.toString()));
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void startDiagnostics() {
+        new Thread(() -> {
+            try (java.net.Socket sock = new java.net.Socket()) {
+                sock.connect(new java.net.InetSocketAddress(
+                        "127.0.0.1", 1080), 3000);
+                sock.setSoTimeout(5000);
+                java.io.OutputStream o = sock.getOutputStream();
+                java.io.InputStream in = sock.getInputStream();
+                o.write(new byte[]{5, 1, 0});
+                o.flush();
+                byte[] r = new byte[2];
+                int n = in.read(r);
+                flog("SOCKS5 handshake: n=" + n + " yanit="
+                        + (n == 2 ? r[0] + "," + r[1] : "yok"));
+                o.write(new byte[]{5, 1, 0, 1, 1, 1, 1, 1, 0, 80});
+                o.flush();
+                byte[] c = new byte[10];
+                n = in.read(c);
+                flog("SOCKS5 CONNECT 1.1.1.1:80 n=" + n
+                        + " durum=" + (n > 1 ? c[1] : -1));
+            } catch (Throwable e) {
+                flog("SOCKS5 test hatasi: " + e);
+            }
+            for (int k = 0; k < 5 && running; k++) {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                try {
+                    long[] st = TProxyService.TProxyGetStats();
+                    flog("HEV stats: " + java.util.Arrays.toString(st));
+                } catch (Throwable e) {
+                    flog("stats hatasi: " + e);
+                }
+            }
+            flog("tanilama bitti");
+        }, "VaxoDPI-Diag").start();
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
@@ -82,7 +139,7 @@ public final class VaxoVpnService extends VpnService {
             try {
                 int result = ByeDpiProxy.jniStartProxy(fd);
                 if (running) {
-                    Log.e(TAG, "ByeDPI sonlandı. Kod: " + result);
+                    flog("ByeDPI sonlandi. Kod: " + result);
                 }
             } catch (Throwable e) {
                 if (running) {
@@ -138,7 +195,8 @@ public final class VaxoVpnService extends VpnService {
             throw new IOException("Hev tüneli başlatılamadı.", e);
         }
 
-        Log.i(TAG, "VPN ve tünel başlatma çağrıları tamamlandı.");
+        flog("VPN ve tunel baslatma cagrilari tamamlandi");
+        startDiagnostics();
         sendStatus("connected",
                 "Tünel başlatıldı; trafik aktarımı henüz doğrulanmadı.");
     }
@@ -162,12 +220,15 @@ public final class VaxoVpnService extends VpnService {
     }
 
     private void stopTunnel() {
+        flog("stopTunnel cagrildi");
         boolean wasRunning = running || tunnelStarted;
         running = false;
 
         if (tunnelStarted) {
             try {
+                flog("Hev durdurma basliyor");
                 TProxyService.TProxyStopService();
+                flog("Hev durdurma bitti");
             } catch (Throwable e) {
                 Log.e(TAG, "Hev durdurulamadı", e);
             }
