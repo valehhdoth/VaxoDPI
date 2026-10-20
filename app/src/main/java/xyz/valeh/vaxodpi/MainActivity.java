@@ -3,6 +3,10 @@ package xyz.valeh.vaxodpi;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.BroadcastReceiver;
+import android.net.VpnService;
 import android.content.res.ColorStateList;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -70,21 +74,36 @@ public class MainActivity extends Activity {
 
     enum State { DISCONNECTED, CONNECTING, CONNECTED }
 
-    /** Gelecekte gerçek VpnService tabanlı altyapı bu arayüzü uygulayacak. */
-    interface ConnectionBackend {
-        boolean isAvailable();
-        String unavailableReason();
-    }
+    private static final int REQ_VPN = 7301;
+    private boolean realServiceStarted = false;
+    private boolean receiverRegistered = false;
 
-    /** Şu an gerçek altyapı yok. */
-    static class NoBackend implements ConnectionBackend {
-        @Override public boolean isAvailable() { return false; }
-        @Override public String unavailableReason() {
-            return "VPN/DPI altyapısı henüz eklenmedi.";
+    private final BroadcastReceiver vpnReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null) return;
+
+            String status = intent.getStringExtra(VaxoVpnService.EXTRA_STATE);
+            String message = intent.getStringExtra(VaxoVpnService.EXTRA_MESSAGE);
+
+            if ("connected".equals(status)) {
+                realServiceStarted = true;
+                demoMode = false;
+                connectedAt = SystemClock.elapsedRealtime();
+                applyState(State.CONNECTED);
+            } else if ("error".equals(status)) {
+                realServiceStarted = false;
+                applyState(State.DISCONNECTED);
+                Toast.makeText(MainActivity.this,
+                        message == null ? "VPN hatası" : message,
+                        Toast.LENGTH_LONG).show();
+            } else if ("disconnected".equals(status)) {
+                realServiceStarted = false;
+                applyState(State.DISCONNECTED);
+            }
         }
-    }
+    };
 
-    private final ConnectionBackend backend = new NoBackend();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random rnd = new Random();
 
@@ -118,6 +137,14 @@ public class MainActivity extends Activity {
             w.setNavigationBarColor(Color.TRANSPARENT);
         } catch (Throwable ignored) { }
         setContentView(buildRoot());
+
+        IntentFilter filter = new IntentFilter(VaxoVpnService.ACTION_STATUS);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(vpnReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(vpnReceiver, filter);
+        }
+        receiverRegistered = true;
         setPage(0, false);
         applyState(State.DISCONNECTED);
         playEntrance();
@@ -146,6 +173,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         handler.removeCallbacksAndMessages(null);
+        if (receiverRegistered) {
+            unregisterReceiver(vpnReceiver);
+            receiverRegistered = false;
+        }
         if (ring != null) ring.setRunning(false);
         super.onDestroy();
     }
@@ -655,18 +686,47 @@ public class MainActivity extends Activity {
             stopAll();
             return;
         }
-        if (backend.isAvailable()) {
-            // TODO (gerçek altyapı): Intent i = VpnService.prepare(this);
-            // i != null ise startActivityForResult(i, REQ_VPN) ile kullanıcı onayı alın,
-            // onayın ardından VpnService alt sınıfınızı başlatın ve durumu buradan güncelleyin.
-            return;
-        }
+
         if (demoMode) {
             startDemo();
+            return;
+        }
+
+        Intent permission = VpnService.prepare(this);
+
+        if (permission != null) {
+            startActivityForResult(permission, REQ_VPN);
         } else {
-            Toast.makeText(this, "Gerçek bağlantı kurulmadı: " + backend.unavailableReason(),
+            startRealVpn();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode != REQ_VPN) return;
+
+        if (resultCode == RESULT_OK) {
+            startRealVpn();
+        } else {
+            applyState(State.DISCONNECTED);
+            Toast.makeText(this, "VPN izni verilmedi.",
                     Toast.LENGTH_LONG).show();
-            shakeNotice();
+        }
+    }
+
+    private void startRealVpn() {
+        applyState(State.CONNECTING);
+
+        try {
+            realServiceStarted = true;
+            startService(new Intent(this, VaxoVpnService.class));
+        } catch (Exception e) {
+            realServiceStarted = false;
+            applyState(State.DISCONNECTED);
+            Toast.makeText(this, e.toString(),
+                    Toast.LENGTH_LONG).show();
         }
     }
 
@@ -712,6 +772,21 @@ public class MainActivity extends Activity {
     private void stopAll() {
         handler.removeCallbacks(demoConnect);
         handler.removeCallbacks(ticker);
+
+        if (realServiceStarted) {
+            Intent stop = new Intent(this, VaxoVpnService.class);
+            stop.setAction(VaxoVpnService.ACTION_STOP);
+
+            try {
+                startService(stop);
+            } catch (Exception e) {
+                Toast.makeText(this, "VPN durdurulamadı.",
+                        Toast.LENGTH_LONG).show();
+            }
+
+            realServiceStarted = false;
+        }
+
         applyState(State.DISCONNECTED);
     }
 
@@ -737,20 +812,20 @@ public class MainActivity extends Activity {
             case CONNECTING:
                 color = ACCENT;
                 title = "BAĞLANIYOR…";
-                sub = "Önizleme animasyonu çalışıyor (DEMO)";
+                sub = demoMode ? "Önizleme animasyonu çalışıyor (DEMO)" : "VPN tüneli başlatılıyor";
                 btn = "İPTAL";
                 break;
             case CONNECTED:
                 color = GREEN;
-                title = "BAĞLI (DEMO)";
-                sub = "Bu bir önizlemedir; trafik tünellenmiyor";
+                title = demoMode ? "BAĞLI (DEMO)" : "TÜNEL BAŞLATILDI";
+                sub = demoMode ? "Bu bir önizlemedir; trafik tünellenmiyor" : "Trafik aktarımı henüz doğrulanmadı";
                 btn = "BAĞLANTIYI KES";
                 break;
             default:
                 color = SLATE;
                 title = "BAĞLI DEĞİL";
                 sub = demoMode ? "Önizleme modu açık – gerçek bağlantı kurulmaz"
-                        : "Gerçek VPN altyapısı henüz eklenmedi";
+                        : "VPN bağlantısı etkin değil";
                 btn = "BAĞLAN";
                 break;
         }
