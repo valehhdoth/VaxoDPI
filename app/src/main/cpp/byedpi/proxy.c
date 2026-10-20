@@ -38,7 +38,7 @@
 int NOT_EXIT = 1;
 
 static void on_cancel(int sig) {
-    NOT_EXIT = 0;
+    __atomic_store_n(&NOT_EXIT, 0, __ATOMIC_RELEASE);
 }
 
 
@@ -870,11 +870,17 @@ int event_loop(int srvfd)
     struct eval *val;
     int i = -1, etype;
     
-    while (NOT_EXIT) {
+    while (__atomic_load_n(&NOT_EXIT, __ATOMIC_ACQUIRE)) {
         val = next_event(pool, &i, &etype);
         if (!val) {
-            if (get_e() == EINTR) 
+            int event_error = get_e();
+
+            if (!__atomic_load_n(&NOT_EXIT, __ATOMIC_ACQUIRE))
+                break;
+
+            if (event_error == EINTR || event_error == 0)
                 continue;
+
             uniperror("(e)poll");
             break;
         }
@@ -886,7 +892,7 @@ int event_loop(int srvfd)
             case EV_ACCEPT:
                 if ((etype & POLLHUP) ||
                         on_accept(pool, val))
-                    NOT_EXIT = 0;
+                    __atomic_store_n(&NOT_EXIT, 0, __ATOMIC_RELEASE);
                 continue;
             
             case EV_REQUEST:
@@ -929,7 +935,7 @@ int event_loop(int srvfd)
             
             default:
                 LOG(LOG_E, "???\n");
-                NOT_EXIT = 0;
+                __atomic_store_n(&NOT_EXIT, 0, __ATOMIC_RELEASE);
         }
     }
     LOG(LOG_S, "exit\n");

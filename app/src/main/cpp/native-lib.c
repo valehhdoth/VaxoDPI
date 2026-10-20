@@ -38,6 +38,7 @@ Java_io_github_dovecoteescapee_byedpi_core_ByeDpiProxy_jniCreateSocketWithComman
         JNIEnv *env,
         __attribute__((unused)) jobject thiz,
         jobjectArray args) {
+    __atomic_store_n(&NOT_EXIT, 1, __ATOMIC_RELEASE);
     int argc = (*env)->GetArrayLength(env, args);
     char *argv[argc];
     for (int i = 0; i < argc; i++) {
@@ -95,6 +96,7 @@ Java_io_github_dovecoteescapee_byedpi_core_ByeDpiProxy_jniCreateSocket(
         jint udp_fake_count,
         jboolean drop_sack,
         jint fake_offset) {
+    __atomic_store_n(&NOT_EXIT, 1, __ATOMIC_RELEASE);
     struct sockaddr_ina s;
 
     const char *address = (*env)->GetStringUTFChars(env, ip, 0);
@@ -270,10 +272,16 @@ Java_io_github_dovecoteescapee_byedpi_core_ByeDpiProxy_jniStartProxy(
         __attribute__((unused)) jobject thiz,
         jint fd) {
     LOG(LOG_S, "start_proxy, fd: %d", fd);
-    NOT_EXIT = 1;
-    if (event_loop(fd) < 0) {
+
+    int result = event_loop(fd);
+    int saved_error = result < 0 ? get_e() : 0;
+
+    /* Parameters are freed only after event_loop has fully exited. */
+    reset_params();
+
+    if (result < 0) {
         uniperror("event_loop");
-        return get_e();
+        return saved_error;
     }
     return 0;
 }
@@ -285,12 +293,7 @@ Java_io_github_dovecoteescapee_byedpi_core_ByeDpiProxy_jniStopProxy(
         jint fd) {
     LOG(LOG_S, "stop_proxy, fd: %d", fd);
 
-    int res = shutdown(fd, SHUT_RDWR);
-    reset_params();
-
-    if (res < 0) {
-        uniperror("shutdown");
-        return get_e();
-    }
+    /* The event loop checks this flag after its bounded wait. */
+    __atomic_store_n(&NOT_EXIT, 0, __ATOMIC_RELEASE);
     return 0;
 }

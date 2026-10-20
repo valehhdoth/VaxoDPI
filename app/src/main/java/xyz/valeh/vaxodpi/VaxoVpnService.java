@@ -183,9 +183,16 @@ public final class VaxoVpnService extends VpnService {
             proxyFd = -1;
         }
 
-        if (proxyThread != null) {
-            proxyThread.interrupt();
-            proxyThread = null;
+        Thread threadToJoin = proxyThread;
+        proxyThread = null;
+
+        if (threadToJoin != null) {
+            threadToJoin.interrupt();
+            try {
+                threadToJoin.join(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         if (vpnInterface != null) {

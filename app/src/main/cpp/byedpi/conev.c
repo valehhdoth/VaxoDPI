@@ -1,3 +1,4 @@
+#include <errno.h>
 #include "conev.h"
 
 #include <stdlib.h>
@@ -149,7 +150,12 @@ struct eval *next_event(struct poolhd *pool, int *offs, int *type)
         int i = *offs;
         assert(i >= -1 && i < pool->max);
         if (i < 0) {
-            i = (epoll_wait(pool->efd, pool->pevents, pool->max, -1) - 1);
+            int ready = epoll_wait(pool->efd, pool->pevents, pool->max, 200);
+            if (ready == 0) {
+                errno = 0;
+                return 0;
+            }
+            i = ready - 1;
             if (i < 0) {
                 return 0;
             }
@@ -184,7 +190,12 @@ struct eval *next_event(struct poolhd *pool, int *offs, int *typel)
     for (int i = *offs; ; i--) {
         assert(i >= -1 && i < pool->max);
         if (i < 0) {
-            if (poll(pool->pevents, pool->count, -1) <= 0) {
+            int ready = poll(pool->pevents, pool->count, 200);
+            if (ready == 0) {
+                errno = 0;
+                return 0;
+            }
+            if (ready < 0) {
                 return 0;
             }
             i = pool->count - 1;
