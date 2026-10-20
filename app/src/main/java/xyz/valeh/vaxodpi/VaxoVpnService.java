@@ -124,7 +124,9 @@ public final class VaxoVpnService extends VpnService {
 
         // Önce yerel ByeDPI SOCKS5 sunucusunu başlat.
         proxyFd = ByeDpiProxy.jniCreateSocketWithCommandLine(
-                new String[]{"-i", "127.0.0.1", "-p", "1080"}
+                new String[]{"-i", "127.0.0.1", "-p", "1080",
+                        "--disorder", "1", "--auto=torst",
+                        "--tlsrec", "1+s"}
         );
 
         if (proxyFd < 0) {
