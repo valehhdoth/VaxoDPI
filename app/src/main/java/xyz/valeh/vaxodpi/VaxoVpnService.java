@@ -37,6 +37,7 @@ public final class VaxoVpnService extends VpnService {
     private volatile boolean running;
     private volatile int proxyFd = -1;
     private boolean tunnelStarted;
+    private int tunFdOwned = -1;
 
     private final StringBuilder dbg = new StringBuilder();
 
@@ -183,6 +184,7 @@ public final class VaxoVpnService extends VpnService {
 
         // Dosya tanımlayıcısının sahipliğini native tünel motoruna aktar.
         int tunFd = vpnInterface.detachFd();
+        tunFdOwned = tunFd;
         vpnInterface = null;
 
         try {
@@ -255,6 +257,21 @@ public final class VaxoVpnService extends VpnService {
                 threadToJoin.join(1000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+            }
+        }
+
+        if (tunFdOwned >= 0) {
+            int f = tunFdOwned;
+            tunFdOwned = -1;
+            try {
+                String t = android.system.Os.readlink("/proc/self/fd/" + f);
+                flog("TUN fd " + f + " hala acik -> " + t);
+                if (t.contains("tun")) {
+                    ParcelFileDescriptor.adoptFd(f).close();
+                    flog("TUN fd kapatildi");
+                }
+            } catch (Throwable e) {
+                flog("TUN fd zaten kapali");
             }
         }
 
