@@ -405,8 +405,8 @@ public class MainActivity extends Activity {
         noticeCard = card(16);
         noticeCard.setBackground(round(0x120A84FF, 20, 0x3300B8FF));
         noticeCard.addView(tv("Altyapı durumu", 13, ACCENT, true));
-        TextView nt = tv("Gerçek VPN/DPI altyapısı henüz bağlı değil. BAĞLAN'a basmak gerçek "
-                + "bir bağlantı kurmaz. Ağ ölçümü yapılmadığı için istatistikler \"--\" gösterilir.",
+        TextView nt = tv("VPN ve ByeDPI altyapısı aktif. BAĞLAN'a basınca tünel kurulur. "
+                + "İstatistikler tünel sayaçlarından hesaplanır.",
                 13, MUTED, false);
         nt.setLineSpacing(0, 1.15f);
         noticeCard.addView(nt, lp(MATCH, WRAP, 6));
@@ -445,6 +445,80 @@ public class MainActivity extends Activity {
         statUnits[idx].setText(unit);
         statValues[idx].setAlpha(0.55f);
         statValues[idx].animate().alpha(1f).setDuration(260).start();
+    }
+
+    private long lastTxBytes = 0L, lastRxBytes = 0L;
+    private long lastStatTime = 0L, lastPingTime = 0L;
+
+    private void updateRealStats() {
+        long[] st;
+        try {
+            st = TProxyService.TProxyGetStats();
+        } catch (Throwable e) {
+            return;
+        }
+        if (st == null || st.length < 4) return;
+
+        long now = SystemClock.elapsedRealtime();
+        if (lastStatTime > 0) {
+            double dt = (now - lastStatTime) / 1000.0;
+            if (dt > 0) {
+                double dl = Math.max(0, st[3] - lastRxBytes) * 8.0 / 1e6 / dt;
+                double ul = Math.max(0, st[1] - lastTxBytes) * 8.0 / 1e6 / dt;
+                setStat(0, String.format(Locale.US, "%.2f", dl), "Mbps");
+                setStat(1, String.format(Locale.US, "%.2f", ul), "Mbps");
+            }
+        }
+        lastStatTime = now;
+        lastTxBytes = st[1];
+        lastRxBytes = st[3];
+
+        double mb = (st[1] + st[3]) / 1048576.0;
+        if (mb < 1024) {
+            setStat(3, String.format(Locale.US, "%.1f", mb), "MB");
+        } else {
+            setStat(3, String.format(Locale.US, "%.2f", mb / 1024.0), "GB");
+        }
+
+        if (now - lastPingTime >= 5000) {
+            lastPingTime = now;
+            startPing();
+        }
+    }
+
+    private void startPing() {
+        new Thread(new Runnable() {
+            @Override public void run() {
+                String result = "--";
+                try (java.net.Socket sock = new java.net.Socket()) {
+                    sock.connect(new java.net.InetSocketAddress("127.0.0.1", 1080), 2000);
+                    sock.setSoTimeout(3000);
+                    java.io.OutputStream o = sock.getOutputStream();
+                    java.io.InputStream in = sock.getInputStream();
+                    o.write(new byte[]{5, 1, 0});
+                    o.flush();
+                    byte[] r = new byte[2];
+                    if (in.read(r) == 2) {
+                        long t0 = SystemClock.elapsedRealtime();
+                        o.write(new byte[]{5, 1, 0, 1, 1, 1, 1, 1, 0x01, (byte) 0xBB});
+                        o.flush();
+                        byte[] c = new byte[10];
+                        int n = in.read(c);
+                        long ms = SystemClock.elapsedRealtime() - t0;
+                        if (n > 1 && c[1] == 0) result = String.valueOf(ms);
+                    }
+                } catch (Throwable ignored) {
+                }
+                final String shown = result;
+                handler.post(new Runnable() {
+                    @Override public void run() {
+                        if (state == State.CONNECTED && !demoMode) {
+                            setStat(2, shown, "ms");
+                        }
+                    }
+                });
+            }
+        }, "VaxoDPI-Ping").start();
     }
 
     private void clearStats() {
@@ -492,17 +566,77 @@ public class MainActivity extends Activity {
 
         LinearLayout info = card(16);
         info.setBackground(round(0x14FFB020, 20, 0x44FFB020));
-        info.addView(tv("Henüz kullanılabilir değil", 13, AMBER, true));
-        TextView it = tv("Aşağıdaki modlar gerçek altyapı eklendiğinde etkinleşecek. "
-                + "Şu an seçilebilir bir mod yoktur.", 13, MUTED, false);
+        info.addView(tv("DPI stratejisi", 13, AMBER, true));
+        TextView it = tv("Siteler veya Discord açılmazsa başka bir strateji seç. "
+                + "Değişiklik bir sonraki bağlanışta geçerli olur.", 13, MUTED, false);
         it.setLineSpacing(0, 1.15f);
         info.addView(it, lp(MATCH, WRAP, 6));
         col.addView(info, lp(MATCH, WRAP, 18));
 
-        col.addView(modeCard("Otomatik", "Ağa göre en uygun yöntemi seçer."), lp(MATCH, WRAP, 12));
-        col.addView(modeCard("DPI Bypass", "Paket parçalama tabanlı DPI atlatma."), lp(MATCH, WRAP, 12));
-        col.addView(modeCard("Tam VPN", "VpnService ile tüm trafiği tünelleme."), lp(MATCH, WRAP, 12));
+        addStrategyCards(col);
+        
+        
         return scrollOf(col);
+    }
+
+    private final java.util.ArrayList<TextView> stratChips = new java.util.ArrayList<>();
+
+    private int currentStrategy() {
+        return getSharedPreferences("vaxodpi", MODE_PRIVATE).getInt("strategy", 0);
+    }
+
+    private void refreshStrategyChips() {
+        int cur = currentStrategy();
+        for (int i = 0; i < stratChips.size(); i++) {
+            TextView chip = stratChips.get(i);
+            if (i == cur) {
+                chip.setText("SEÇİLİ");
+                chip.setTextColor(GREEN);
+                chip.setBackground(round(0x1400FF9C, 10, 0x8800FF9C));
+            } else {
+                chip.setText("SEÇ");
+                chip.setTextColor(MUTED);
+                chip.setBackground(round(0x14FFFFFF, 10, 0x33FFFFFF));
+            }
+        }
+    }
+
+    private void addStrategyCards(LinearLayout col) {
+        stratChips.clear();
+        for (int i = 0; i < VaxoVpnService.STRATEGY_NAMES.length; i++) {
+            final int idx = i;
+            LinearLayout c = card(16);
+            c.setOrientation(LinearLayout.HORIZONTAL);
+            c.setGravity(Gravity.CENTER_VERTICAL);
+            c.setClickable(true);
+            press(c);
+
+            LinearLayout txt = new LinearLayout(this);
+            txt.setOrientation(LinearLayout.VERTICAL);
+            txt.addView(tv(VaxoVpnService.STRATEGY_NAMES[i], 16, TEXT, true));
+            txt.addView(tv(VaxoVpnService.STRATEGY_DESCS[i], 12, MUTED, false), lp(WRAP, WRAP, 4));
+            c.addView(txt, new LinearLayout.LayoutParams(0, WRAP, 1f));
+
+            TextView chip = tv("", 10, MUTED, true);
+            chip.setLetterSpacing(0.1f);
+            chip.setPadding(dp(10), dp(5), dp(10), dp(5));
+            stratChips.add(chip);
+            c.addView(chip);
+
+            c.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    getSharedPreferences("vaxodpi", MODE_PRIVATE)
+                            .edit().putInt("strategy", idx).apply();
+                    refreshStrategyChips();
+                    String msg = (state != State.DISCONNECTED)
+                            ? "Yeni strateji için bağlantıyı kesip yeniden bağlan."
+                            : "Strateji seçildi: " + VaxoVpnService.STRATEGY_NAMES[idx];
+                    Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+                }
+            });
+            col.addView(c, lp(MATCH, WRAP, 12));
+        }
+        refreshStrategyChips();
     }
 
     private View modeCard(final String title, String desc) {
@@ -569,9 +703,9 @@ public class MainActivity extends Activity {
         // Altyapı durumu
         LinearLayout status = card(16);
         status.addView(tv("Altyapı durumu", 13, ACCENT, true));
-        status.addView(infoRow("VpnService", "Eklenmedi", RED), lp(MATCH, WRAP, 12));
-        status.addView(infoRow("DPI bypass motoru", "Eklenmedi", RED), lp(MATCH, WRAP, 10));
-        status.addView(infoRow("Ağ ölçümü", "Yok", RED), lp(MATCH, WRAP, 10));
+        status.addView(infoRow("VpnService", "Aktif", GREEN), lp(MATCH, WRAP, 12));
+        status.addView(infoRow("DPI bypass motoru", "Aktif (ByeDPI)", GREEN), lp(MATCH, WRAP, 10));
+        status.addView(infoRow("Ağ ölçümü", "Aktif", GREEN), lp(MATCH, WRAP, 10));
         status.addView(infoRow("Sürüm", VERSION, TEXT), lp(MATCH, WRAP, 10));
         col.addView(status, lp(MATCH, WRAP, 12));
 
@@ -758,7 +892,7 @@ public class MainActivity extends Activity {
         @Override public void run() {
             if (state != State.CONNECTED) return;
             updateTimer();
-            if (demoMode) setStatsDemo();
+            if (demoMode) setStatsDemo(); else updateRealStats();
             handler.postDelayed(this, 1000);
         }
     };
@@ -804,6 +938,8 @@ public class MainActivity extends Activity {
 
     private void applyState(State s) {
         state = s;
+        lastStatTime = 0L;
+        lastPingTime = 0L;
         handler.removeCallbacks(ticker);
 
         int color;

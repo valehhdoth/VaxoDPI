@@ -23,6 +23,19 @@ public final class VaxoVpnService extends VpnService {
     public static final String EXTRA_STATE = "state";
     public static final String EXTRA_MESSAGE = "message";
 
+    public static final String[] STRATEGY_NAMES = {
+        "Varsayılan", "Split", "Disorder", "OOB"};
+    public static final String[] STRATEGY_DESCS = {
+        "Disorder + otomatik + TLS parçalama (şu an çalışan)",
+        "Paketi bölme + otomatik + TLS parçalama",
+        "Geç sıralı gönderim + otomatik + TLS parçalama",
+        "Bant dışı veri + otomatik + TLS parçalama"};
+    public static final String[] STRATEGY_ARGS = {
+        "--disorder 1 --auto=torst --tlsrec 1+s",
+        "--split 1+s --auto=torst --tlsrec 1+s",
+        "--disorder 1+s --auto=torst --tlsrec 1+s",
+        "--oob 1+s --auto=torst --tlsrec 1+s"};
+
     private void sendStatus(String state, String message) {
         Intent statusIntent = new Intent(ACTION_STATUS);
         statusIntent.setPackage(getPackageName());
@@ -125,9 +138,7 @@ public final class VaxoVpnService extends VpnService {
 
         // Önce yerel ByeDPI SOCKS5 sunucusunu başlat.
         proxyFd = ByeDpiProxy.jniCreateSocketWithCommandLine(
-                new String[]{"-i", "127.0.0.1", "-p", "1080",
-                        "--disorder", "1", "--auto=torst",
-                        "--tlsrec", "1+s"}
+                buildArgs()
         );
 
         if (proxyFd < 0) {
@@ -203,6 +214,17 @@ public final class VaxoVpnService extends VpnService {
         startDiagnostics();
         sendStatus("connected",
                 "Tünel başlatıldı; trafik aktarımı henüz doğrulanmadı.");
+    }
+
+    private String[] buildArgs() {
+        int idx = getSharedPreferences("vaxodpi", MODE_PRIVATE)
+                .getInt("strategy", 0);
+        if (idx < 0 || idx >= STRATEGY_ARGS.length) idx = 0;
+        java.util.ArrayList<String> a = new java.util.ArrayList<>();
+        a.add("-i"); a.add("127.0.0.1"); a.add("-p"); a.add("1080");
+        for (String x : STRATEGY_ARGS[idx].split(" ")) a.add(x);
+        flog("Strateji: " + STRATEGY_NAMES[idx]);
+        return a.toArray(new String[0]);
     }
 
     private File copyConfig() throws IOException {
