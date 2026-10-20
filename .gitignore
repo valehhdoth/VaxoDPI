@@ -5,3 +5,7 @@ local.properties
 build/
 app/build/
 .gradle/
+
+app/classes/
+app/dex/
+*.class
