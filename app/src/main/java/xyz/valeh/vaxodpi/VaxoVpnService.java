@@ -59,14 +59,6 @@ public final class VaxoVpnService extends VpnService {
         dbg.append(new java.text.SimpleDateFormat("HH:mm:ss",
                 java.util.Locale.US).format(new java.util.Date()))
            .append(' ').append(msg).append('\n');
-        try {
-            android.content.ClipboardManager cm =
-                (android.content.ClipboardManager)
-                    getSystemService(CLIPBOARD_SERVICE);
-            cm.setPrimaryClip(android.content.ClipData.newPlainText(
-                    "vaxolog", dbg.toString()));
-        } catch (Throwable ignored) {
-        }
     }
 
     private void startDiagnostics() {
