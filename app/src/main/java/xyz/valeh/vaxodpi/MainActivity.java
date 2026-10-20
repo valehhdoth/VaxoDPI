@@ -58,16 +58,16 @@ public class MainActivity extends Activity {
 
     // Renkler
     static final int BG = 0xFF000000;
-    static final int CARD = 0xFF0A0E16;
-    static final int CARD_STROKE = 0xFF172033;
-    static final int ACCENT = 0xFF00B8FF;
-    static final int ELECTRIC = 0xFF2F6BFF;
-    static final int TEXT = 0xFFF2F6FF;
-    static final int MUTED = 0xFF7C8799;
-    static final int SLATE = 0xFF4B5B7A;
-    static final int AMBER = 0xFFFFB020;
-    static final int GREEN = 0xFF1CE6A8;
-    static final int RED = 0xFFFF4D6A;
+    static final int CARD = 0xFF0D0D0D;
+    static final int CARD_STROKE = 0xFF2A2A2A;
+    static final int ACCENT = 0xFFFFFFFF;
+    static final int ELECTRIC = 0xFFB8B8B8;
+    static final int TEXT = 0xFFFFFFFF;
+    static final int MUTED = 0xFF8C8C8C;
+    static final int SLATE = 0xFF555555;
+    static final int AMBER = 0xFFD0D0D0;
+    static final int GREEN = 0xFFFFFFFF;
+    static final int RED = 0xFFB8B8B8;
 
     static final int MATCH = ViewGroup.LayoutParams.MATCH_PARENT;
     static final int WRAP = ViewGroup.LayoutParams.WRAP_CONTENT;
@@ -95,7 +95,7 @@ public class MainActivity extends Activity {
                 realServiceStarted = false;
                 applyState(State.DISCONNECTED);
                 Toast.makeText(MainActivity.this,
-                        message == null ? "VPN hatası" : message,
+                        message == null ? L("VPN hatası") : message,
                         Toast.LENGTH_LONG).show();
             } else if ("disconnected".equals(status)) {
                 realServiceStarted = false;
@@ -103,6 +103,127 @@ public class MainActivity extends Activity {
             }
         }
     };
+
+    private int lang = -1;
+
+    private static final String[][] TR3 = {
+ {"DPI bypass arayüzü","DPI bypass interface","Интерфейс обхода DPI"},
+ {"DEMO – gösterilen değerler gerçek ölçüm değildir","DEMO – values shown are not real measurements","ДЕМО – показанные значения не являются реальными измерениями"},
+ {"BAĞLI DEĞİL","NOT CONNECTED","НЕ ПОДКЛЮЧЕНО"},
+ {"BAĞLAN","CONNECT","ПОДКЛЮЧИТЬ"},
+ {"Bağlantı süresi","Connection time","Время соединения"},
+ {"İNDİRME","DOWNLOAD","ЗАГРУЗКА"},
+ {"YÜKLEME","UPLOAD","ОТДАЧА"},
+ {"KULLANILAN VERİ","DATA USED","ТРАФИК"},
+ {"Altyapı durumu","System status","Состояние системы"},
+ {"ByeDPI altyapısı aktif. BAĞLAN'a basınca tünel kurulur. İstatistikler tünel sayaçlarından hesaplanır.","ByeDPI engine is active. Pressing CONNECT starts the tunnel. Statistics are calculated from tunnel counters.","Движок ByeDPI активен. Нажатие «ПОДКЛЮЧИТЬ» запускает туннель. Статистика считается по счётчикам туннеля."},
+ {"Modlar","Modes","Режимы"},
+ {"Bağlantı yöntemini seç","Choose connection method","Выберите способ подключения"},
+ {"DPI stratejisi","DPI strategy","Стратегия DPI"},
+ {"Siteler veya Discord açılmazsa başka bir strateji seç. Değişiklik bir sonraki bağlanışta geçerli olur.","If sites or Discord don't open, pick another strategy. Changes apply on the next connection.","Если сайты или Discord не открываются, выберите другую стратегию. Изменения вступят в силу при следующем подключении."},
+ {"SEÇİLİ","SELECTED","ВЫБРАНО"},
+ {"SEÇ","SELECT","ВЫБРАТЬ"},
+ {"YAKINDA","SOON","СКОРО"},
+ {"Yakında","Coming soon","Скоро"},
+ {"Varsayılan","Default","По умолчанию"},
+ {"Disorder + otomatik + TLS parçalama (şu an çalışan)","Disorder + auto + TLS split (current default)","Disorder + авто + TLS-фрагментация (текущая)"},
+ {"Paketi bölme + otomatik + TLS parçalama","Packet split + auto + TLS split","Разделение пакета + авто + TLS-фрагментация"},
+ {"Geç sıralı gönderim + otomatik + TLS parçalama","Out-of-order send + auto + TLS split","Отправка не по порядку + авто + TLS-фрагментация"},
+ {"Bant dışı veri + otomatik + TLS parçalama","Out-of-band data + auto + TLS split","Внеполосные данные + авто + TLS-фрагментация"},
+ {"Ayarlar","Settings","Настройки"},
+ {"Uygulama ve önizleme seçenekleri","App and preview options","Параметры приложения и предпросмотра"},
+ {"Önizleme modu (DEMO)","Preview mode (DEMO)","Режим предпросмотра (ДЕМО)"},
+ {"KAPALI","OFF","ВЫКЛ"},
+ {"AÇIK","ON","ВКЛ"},
+ {"Yalnızca arayüz durumlarını görmek içindir. Gerçek bağlantı kurmaz, trafiği tünellemez; değerler rastgele üretilir ve DEMO olarak işaretlenir.","For viewing interface states only. It makes no real connection and tunnels no traffic; values are random and marked as DEMO.","Только для просмотра состояний интерфейса. Реального подключения нет, трафик не туннелируется; значения случайны и помечены как ДЕМО."},
+ {"DPI bypass motoru","DPI bypass engine","Движок обхода DPI"},
+ {"Aktif (ByeDPI)","Active (ByeDPI)","Активен (ByeDPI)"},
+ {"Aktif","Active","Активно"},
+ {"Ağ ölçümü","Network metrics","Сетевые метрики"},
+ {"Sürüm","Version","Версия"},
+ {"Uygulama bazlı bölme","Per-app split","Раздельное туннелирование по приложениям"},
+ {"DNS ayarları","DNS settings","Настройки DNS"},
+ {"Otomatik bağlan","Auto-connect","Автоподключение"},
+ {"Ana Sayfa","Home","Главная"},
+ {"BAĞLANIYOR…","CONNECTING…","ПОДКЛЮЧЕНИЕ…"},
+ {"Önizleme animasyonu çalışıyor (DEMO)","Preview animation running (DEMO)","Работает демо-анимация"},
+ {"VPN tüneli başlatılıyor","Starting the tunnel","Запуск туннеля"},
+ {"İPTAL","CANCEL","ОТМЕНА"},
+ {"BAĞLI (DEMO)","CONNECTED (DEMO)","ПОДКЛЮЧЕНО (ДЕМО)"},
+ {"TÜNEL BAŞLATILDI","TUNNEL STARTED","ТУННЕЛЬ ЗАПУЩЕН"},
+ {"Bu bir önizlemedir; trafik tünellenmiyor","This is a preview; traffic is not tunneled","Это предпросмотр; трафик не туннелируется"},
+ {"DPI atlatma etkin","DPI bypass is active","Обход DPI активен"},
+ {"BAĞLANTIYI KES","DISCONNECT","ОТКЛЮЧИТЬ"},
+ {"Önizleme modu açık – gerçek bağlantı kurulmaz","Preview mode is on – no real connection","Режим предпросмотра включён – реального подключения нет"},
+ {"VPN bağlantısı etkin değil","Connection is not active","Соединение не активно"},
+ {"VPN izni verilmedi.","VPN permission was not granted.","Разрешение VPN не предоставлено."},
+ {"VPN durdurulamadı.","Could not stop the tunnel.","Не удалось остановить туннель."},
+ {"VPN hatası","VPN error","Ошибка VPN"},
+ {"Yeni strateji için bağlantıyı kesip yeniden bağlan.","Disconnect and reconnect to use the new strategy.","Отключитесь и подключитесь снова, чтобы применить новую стратегию."},
+ {"Strateji seçildi: ","Strategy selected: ","Стратегия выбрана: "},
+ {"Dil","Language","Язык"},
+ {"Bağlantılar","Links","Ссылки"},
+ {"Discord adı kopyalandı","Discord username copied","Ник Discord скопирован"},
+    };
+
+    private int langIdx() {
+        if (lang < 0) {
+            String sys = java.util.Locale.getDefault().getLanguage();
+            int d = "tr".equals(sys) ? 0 : ("ru".equals(sys) ? 2 : 1);
+            lang = getSharedPreferences("vaxodpi", MODE_PRIVATE).getInt("lang", d);
+        }
+        return lang;
+    }
+
+    private String L(String s) {
+        int l = langIdx();
+        for (String[] r : TR3) {
+            if (r[0].equals(s) || r[1].equals(s) || r[2].equals(s)) return r[l];
+        }
+        return s;
+    }
+
+    private void translateTree(View v) {
+        if (v instanceof TextView) {
+            TextView t = (TextView) v;
+            String cur = t.getText().toString();
+            String n = L(cur);
+            if (!n.equals(cur)) t.setText(n);
+        }
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) translateTree(g.getChildAt(i));
+        }
+    }
+
+    @Override
+    protected void onPostCreate(android.os.Bundle b) {
+        super.onPostCreate(b);
+        translateTree(getWindow().getDecorView());
+    }
+
+    private final java.util.ArrayList<TextView> langChips = new java.util.ArrayList<>();
+
+    private void refreshLangChips() {
+        int cur = langIdx();
+        for (int i = 0; i < langChips.size(); i++) {
+            TextView c = langChips.get(i);
+            if (i == cur) {
+                c.setTextColor(BG);
+                c.setBackground(round(0xFFFFFFFF, 12, 0xFFFFFFFF));
+            } else {
+                c.setTextColor(MUTED);
+                c.setBackground(round(0x14FFFFFF, 12, 0x33FFFFFF));
+            }
+        }
+    }
+
+    private void setLang(int l) {
+        lang = l;
+        getSharedPreferences("vaxodpi", MODE_PRIVATE).edit().putInt("lang", l).apply();
+        translateTree(getWindow().getDecorView());
+        refreshLangChips();
+    }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random rnd = new Random();
@@ -314,12 +435,11 @@ public class MainActivity extends Activity {
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView logo = tv("V", 22, Color.WHITE, true);
-        logo.setGravity(Gravity.CENTER);
-        GradientDrawable lg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{ELECTRIC, ACCENT});
-        lg.setCornerRadius(dp(13));
-        logo.setBackground(lg);
+        android.widget.ImageView logo = new android.widget.ImageView(this);
+        logo.setImageResource(getResources().getIdentifier("ic_launcher", "mipmap", getPackageName()));
+        logo.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        logo.setBackground(round(0xFF000000, 13, 0x33FFFFFF));
+        logo.setClipToOutline(true);
         header.addView(logo, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
         LinearLayout names = new LinearLayout(this);
@@ -333,7 +453,7 @@ public class MainActivity extends Activity {
 
         TextView ver = tv(VERSION, 12, ACCENT, true);
         ver.setPadding(dp(10), dp(5), dp(10), dp(5));
-        ver.setBackground(round(0x1A00B8FF, 12, 0x5500B8FF));
+        ver.setBackground(round(0x1AFFFFFF, 12, 0x55FFFFFF));
         header.addView(ver);
         col.addView(header, new LinearLayout.LayoutParams(MATCH, WRAP));
 
@@ -341,7 +461,7 @@ public class MainActivity extends Activity {
         demoBadge = tv("DEMO – gösterilen değerler gerçek ölçüm değildir", 12, AMBER, true);
         demoBadge.setGravity(Gravity.CENTER);
         demoBadge.setPadding(dp(12), dp(8), dp(12), dp(8));
-        demoBadge.setBackground(round(0x1AFFB020, 12, 0x55FFB020));
+        demoBadge.setBackground(round(0x1AFFFFFF, 12, 0x55FFFFFF));
         demoBadge.setVisibility(View.GONE);
         col.addView(demoBadge, lp(MATCH, WRAP, 14));
 
@@ -403,9 +523,9 @@ public class MainActivity extends Activity {
 
         // Altyapı bildirimi
         noticeCard = card(16);
-        noticeCard.setBackground(round(0x120A84FF, 20, 0x3300B8FF));
+        noticeCard.setBackground(round(0x12FFFFFF, 20, 0x33FFFFFF));
         noticeCard.addView(tv("Altyapı durumu", 13, ACCENT, true));
-        TextView nt = tv("VPN ve ByeDPI altyapısı aktif. BAĞLAN'a basınca tünel kurulur. "
+        TextView nt = tv("ByeDPI altyapısı aktif. BAĞLAN'a basınca tünel kurulur. "
                 + "İstatistikler tünel sayaçlarından hesaplanır.",
                 13, MUTED, false);
         nt.setLineSpacing(0, 1.15f);
@@ -565,7 +685,7 @@ public class MainActivity extends Activity {
         col.addView(tv("Bağlantı yöntemini seç", 13, MUTED, false), lp(WRAP, WRAP, 4));
 
         LinearLayout info = card(16);
-        info.setBackground(round(0x14FFB020, 20, 0x44FFB020));
+        info.setBackground(round(0x14FFFFFF, 20, 0x44FFFFFF));
         info.addView(tv("DPI stratejisi", 13, AMBER, true));
         TextView it = tv("Siteler veya Discord açılmazsa başka bir strateji seç. "
                 + "Değişiklik bir sonraki bağlanışta geçerli olur.", 13, MUTED, false);
@@ -590,11 +710,11 @@ public class MainActivity extends Activity {
         for (int i = 0; i < stratChips.size(); i++) {
             TextView chip = stratChips.get(i);
             if (i == cur) {
-                chip.setText("SEÇİLİ");
+                chip.setText(L("SEÇİLİ"));
                 chip.setTextColor(GREEN);
-                chip.setBackground(round(0x1400FF9C, 10, 0x8800FF9C));
+                chip.setBackground(round(0x14FFFFFF, 10, 0x88FFFFFF));
             } else {
-                chip.setText("SEÇ");
+                chip.setText(L("SEÇ"));
                 chip.setTextColor(MUTED);
                 chip.setBackground(round(0x14FFFFFF, 10, 0x33FFFFFF));
             }
@@ -629,8 +749,8 @@ public class MainActivity extends Activity {
                             .edit().putInt("strategy", idx).apply();
                     refreshStrategyChips();
                     String msg = (state != State.DISCONNECTED)
-                            ? "Yeni strateji için bağlantıyı kesip yeniden bağlan."
-                            : "Strateji seçildi: " + VaxoVpnService.STRATEGY_NAMES[idx];
+                            ? L("Yeni strateji için bağlantıyı kesip yeniden bağlan.")
+                            : L("Strateji seçildi: ") + L(VaxoVpnService.STRATEGY_NAMES[idx]);
                     Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
                 }
             });
@@ -675,6 +795,31 @@ public class MainActivity extends Activity {
         col.addView(tv("Ayarlar", 26, TEXT, true));
         col.addView(tv("Uygulama ve önizleme seçenekleri", 13, MUTED, false), lp(WRAP, WRAP, 4));
 
+        // Dil seçimi
+        LinearLayout langCard = card(16);
+        langCard.addView(tv("Dil", 13, ACCENT, true));
+        LinearLayout langRow = new LinearLayout(this);
+        langRow.setOrientation(LinearLayout.HORIZONTAL);
+        langChips.clear();
+        String[] langNames = {"TÜRKÇE", "ENGLISH", "РУССКИЙ"};
+        for (int i = 0; i < 3; i++) {
+            final int li = i;
+            TextView lc = tv(langNames[i], 12, MUTED, true);
+            lc.setGravity(Gravity.CENTER);
+            lc.setClickable(true);
+            press(lc);
+            lc.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { setLang(li); }
+            });
+            LinearLayout.LayoutParams lpar = new LinearLayout.LayoutParams(0, dp(36), 1f);
+            if (i > 0) lpar.leftMargin = dp(8);
+            langRow.addView(lc, lpar);
+            langChips.add(lc);
+        }
+        langCard.addView(langRow, lp(MATCH, WRAP, 12));
+        col.addView(langCard, lp(MATCH, WRAP, 18));
+        refreshLangChips();
+
         // Demo anahtarı
         LinearLayout demo = card(16);
         LinearLayout demoRow = new LinearLayout(this);
@@ -703,7 +848,7 @@ public class MainActivity extends Activity {
         // Altyapı durumu
         LinearLayout status = card(16);
         status.addView(tv("Altyapı durumu", 13, ACCENT, true));
-        status.addView(infoRow("VpnService", "Aktif", GREEN), lp(MATCH, WRAP, 12));
+        status.addView(infoRow("VPN", "Yakında", MUTED), lp(MATCH, WRAP, 12));
         status.addView(infoRow("DPI bypass motoru", "Aktif (ByeDPI)", GREEN), lp(MATCH, WRAP, 10));
         status.addView(infoRow("Ağ ölçümü", "Aktif", GREEN), lp(MATCH, WRAP, 10));
         status.addView(infoRow("Sürüm", VERSION, TEXT), lp(MATCH, WRAP, 10));
@@ -717,7 +862,38 @@ public class MainActivity extends Activity {
         soon.addView(infoRow("Otomatik bağlan", "Yakında", MUTED), lp(MATCH, WRAP, 10));
         col.addView(soon, lp(MATCH, WRAP, 12));
 
+        LinearLayout about = card(16);
+        about.addView(tv("Bağlantılar", 13, ACCENT, true));
+        about.addView(linkRow("Discord", 0), lp(MATCH, WRAP, 12));
+        about.addView(linkRow("GitHub", 1), lp(MATCH, WRAP, 10));
+        col.addView(about, lp(MATCH, WRAP, 12));
+
         return scrollOf(col);
+    }
+
+    private View linkRow(String label, final int kind) {
+        String value = kind == 0 ? "valeh.xyz" : "valehhdoth";
+        View r = infoRow(label, value, TEXT);
+        r.setClickable(true);
+        r.setPadding(0, dp(8), 0, dp(8));
+        r.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                try {
+                    if (kind == 0) {
+                        android.content.ClipboardManager cm = (android.content.ClipboardManager)
+                                getSystemService(Context.CLIPBOARD_SERVICE);
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("discord", "valeh.xyz"));
+                        Toast.makeText(MainActivity.this, L("Discord adı kopyalandı"),
+                                Toast.LENGTH_SHORT).show();
+                    } else {
+                        startActivity(new Intent(Intent.ACTION_VIEW,
+                                android.net.Uri.parse("https://github.com/valehhdoth")));
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        });
+        return r;
     }
 
     private View infoRow(String label, String value, int valueColor) {
@@ -732,11 +908,11 @@ public class MainActivity extends Activity {
     private void updateToggle() {
         if (demoToggle == null) return;
         if (demoMode) {
-            demoToggle.setText("AÇIK");
+            demoToggle.setText(L("AÇIK"));
             demoToggle.setTextColor(AMBER);
-            demoToggle.setBackground(round(0x1AFFB020, 17, 0x88FFB020));
+            demoToggle.setBackground(round(0x1AFFFFFF, 17, 0x88FFFFFF));
         } else {
-            demoToggle.setText("KAPALI");
+            demoToggle.setText(L("KAPALI"));
             demoToggle.setTextColor(MUTED);
             demoToggle.setBackground(round(0x14FFFFFF, 17, 0x33FFFFFF));
         }
@@ -757,10 +933,10 @@ public class MainActivity extends Activity {
     private View buildNav() {
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.VERTICAL);
-        wrap.setBackgroundColor(0xFF06080D);
+        wrap.setBackgroundColor(0xFF050505);
 
         View line = new View(this);
-        line.setBackgroundColor(0xFF121826);
+        line.setBackgroundColor(0xFF222222);
         wrap.addView(line, new LinearLayout.LayoutParams(MATCH, 1));
 
         LinearLayout row = new LinearLayout(this);
@@ -845,7 +1021,7 @@ public class MainActivity extends Activity {
             startRealVpn();
         } else {
             applyState(State.DISCONNECTED);
-            Toast.makeText(this, "VPN izni verilmedi.",
+            Toast.makeText(this, L("VPN izni verilmedi."),
                     Toast.LENGTH_LONG).show();
         }
     }
@@ -914,7 +1090,7 @@ public class MainActivity extends Activity {
             try {
                 startService(stop);
             } catch (Exception e) {
-                Toast.makeText(this, "VPN durdurulamadı.",
+                Toast.makeText(this, L("VPN durdurulamadı."),
                         Toast.LENGTH_LONG).show();
             }
 
@@ -954,7 +1130,7 @@ public class MainActivity extends Activity {
             case CONNECTED:
                 color = GREEN;
                 title = demoMode ? "BAĞLI (DEMO)" : "TÜNEL BAŞLATILDI";
-                sub = demoMode ? "Bu bir önizlemedir; trafik tünellenmiyor" : "Trafik aktarımı henüz doğrulanmadı";
+                sub = demoMode ? "Bu bir önizlemedir; trafik tünellenmiyor" : "DPI atlatma etkin";
                 btn = "BAĞLANTIYI KES";
                 break;
             default:
@@ -965,6 +1141,10 @@ public class MainActivity extends Activity {
                 btn = "BAĞLAN";
                 break;
         }
+
+        title = L(title);
+        sub = L(sub);
+        btn = L(btn);
 
         ring.setState(s, color);
         statusTitle.setText(title);
@@ -995,12 +1175,12 @@ public class MainActivity extends Activity {
                     new int[]{ELECTRIC, ACCENT});
             g.setCornerRadius(dp(28));
             connectBtn.setBackground(ripple(g, 28));
-            connectBtn.setTextColor(Color.WHITE);
+            connectBtn.setTextColor(BG);
         } else if (s == State.CONNECTING) {
-            connectBtn.setBackground(ripple(round(0x1500B8FF, 28, ACCENT), 28));
+            connectBtn.setBackground(ripple(round(0x15FFFFFF, 28, ACCENT), 28));
             connectBtn.setTextColor(ACCENT);
         } else {
-            connectBtn.setBackground(ripple(round(0x15FF4D6A, 28, RED), 28));
+            connectBtn.setBackground(ripple(round(0x15FFFFFF, 28, RED), 28));
             connectBtn.setTextColor(RED);
         }
     }
@@ -1136,14 +1316,14 @@ public class MainActivity extends Activity {
             canvas.drawCircle(cx, cy, glowRadius, glowP);
 
             // İç disk
-            discP.setColor(0xFF070A10);
+            discP.setColor(0xFF050505);
             canvas.drawCircle(cx, cy, radius - 16 * d, discP);
 
             // Halka zemini
             if (st == State.CONNECTED) {
                 trackP.setColor(withAlpha(color, (int) (150 + 80 * breathe)));
             } else {
-                trackP.setColor(0xFF121A29);
+                trackP.setColor(0xFF2A2A2A);
             }
             canvas.drawCircle(cx, cy, radius, trackP);
 
