@@ -1,0 +1,16 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'xyz.valeh.vaxodpi'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'xyz.valeh.vaxodpi'
+        minSdk 21
+        targetSdk 24
+        versionCode 1
+        versionName '1.0'
+    }
+}

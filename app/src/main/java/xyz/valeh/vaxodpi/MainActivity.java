@@ -1,0 +1,1033 @@
+package xyz.valeh.vaxodpi;
+
+import android.animation.ValueAnimator;
+import android.app.Activity;
+import android.content.Context;
+import android.content.res.ColorStateList;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Insets;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RadialGradient;
+import android.graphics.RectF;
+import android.graphics.Shader;
+import android.graphics.SweepGradient;
+import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
+import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowInsets;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.LinearInterpolator;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.util.Locale;
+import java.util.Random;
+
+/**
+ * VaxoDPI - arayüz katmanı.
+ *
+ * ÖNEMLİ: Bu dosyada GERÇEK bir VPN / DPI bypass bağlantısı YOKTUR.
+ * - Gerçek bağlantı için ConnectionBackend arayüzü hazırdır (şu an NoBackend: isAvailable() = false).
+ * - "Önizleme (DEMO)" modu yalnızca arayüz durumlarını göstermek içindir, trafik tünellemez,
+ *   gösterilen değerler rastgele üretilir ve ekranda DEMO olarak işaretlenir.
+ */
+public class MainActivity extends Activity {
+
+    static final String VERSION = "v0.1";
+
+    // Renkler
+    static final int BG = 0xFF000000;
+    static final int CARD = 0xFF0A0E16;
+    static final int CARD_STROKE = 0xFF172033;
+    static final int ACCENT = 0xFF00B8FF;
+    static final int ELECTRIC = 0xFF2F6BFF;
+    static final int TEXT = 0xFFF2F6FF;
+    static final int MUTED = 0xFF7C8799;
+    static final int SLATE = 0xFF4B5B7A;
+    static final int AMBER = 0xFFFFB020;
+    static final int GREEN = 0xFF1CE6A8;
+    static final int RED = 0xFFFF4D6A;
+
+    static final int MATCH = ViewGroup.LayoutParams.MATCH_PARENT;
+    static final int WRAP = ViewGroup.LayoutParams.WRAP_CONTENT;
+
+    enum State { DISCONNECTED, CONNECTING, CONNECTED }
+
+    /** Gelecekte gerçek VpnService tabanlı altyapı bu arayüzü uygulayacak. */
+    interface ConnectionBackend {
+        boolean isAvailable();
+        String unavailableReason();
+    }
+
+    /** Şu an gerçek altyapı yok. */
+    static class NoBackend implements ConnectionBackend {
+        @Override public boolean isAvailable() { return false; }
+        @Override public String unavailableReason() {
+            return "VPN/DPI altyapısı henüz eklenmedi.";
+        }
+    }
+
+    private final ConnectionBackend backend = new NoBackend();
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Random rnd = new Random();
+
+    private float density;
+    private State state = State.DISCONNECTED;
+    private boolean demoMode = false;
+    private boolean resumed = false;
+    private long connectedAt = 0L;
+    private double usedMb = 0;
+    private int currentPage = -1;
+
+    private RingView ring;
+    private TextView statusTitle, statusSub, connectBtn, timerText, demoBadge, demoToggle;
+    private LinearLayout homeColumn, noticeCard;
+    private final TextView[] statValues = new TextView[4];
+    private final TextView[] statUnits = new TextView[4];
+    private final View[] pages = new View[3];
+    private final IconView[] navIcons = new IconView[3];
+    private final TextView[] navLabels = new TextView[3];
+
+    // ------------------------------------------------------------------ yaşam döngüsü
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        density = getResources().getDisplayMetrics().density;
+        Window w = getWindow();
+        w.setBackgroundDrawable(new ColorDrawable(BG));
+        try {
+            w.setStatusBarColor(Color.TRANSPARENT);
+            w.setNavigationBarColor(Color.TRANSPARENT);
+        } catch (Throwable ignored) { }
+        setContentView(buildRoot());
+        setPage(0, false);
+        applyState(State.DISCONNECTED);
+        playEntrance();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        resumed = true;
+        ring.setRunning(true);
+        if (state == State.CONNECTED) {
+            updateTimer();
+            handler.removeCallbacks(ticker);
+            handler.postDelayed(ticker, 1000);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        resumed = false;
+        ring.setRunning(false);
+        handler.removeCallbacks(ticker);
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        if (ring != null) ring.setRunning(false);
+        super.onDestroy();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (currentPage != 0) {
+            setPage(0, true);
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    // ------------------------------------------------------------------ yardımcılar
+
+    private int dp(float v) { return Math.round(v * density); }
+
+    private TextView tv(String text, float sp, int color, boolean bold) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextSize(sp);
+        t.setTextColor(color);
+        t.setTypeface(bold ? Typeface.create("sans-serif-medium", Typeface.BOLD)
+                : Typeface.create("sans-serif", Typeface.NORMAL));
+        t.setIncludeFontPadding(false);
+        return t;
+    }
+
+    private GradientDrawable round(int fill, float radiusDp, int stroke) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(fill);
+        g.setCornerRadius(dp(radiusDp));
+        if (stroke != 0) g.setStroke(Math.max(1, dp(1.2f)), stroke);
+        return g;
+    }
+
+    private Drawable ripple(Drawable base, float radiusDp) {
+        GradientDrawable mask = round(Color.WHITE, radiusDp, 0);
+        return new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), base, mask);
+    }
+
+    private LinearLayout.LayoutParams lp(int w, int h, float topDp) {
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(w, h);
+        p.topMargin = dp(topDp);
+        return p;
+    }
+
+    /** Dokunma geri bildirimi: hafif küçülme. Tıklama olayını engellemez. */
+    private void press(View v) {
+        v.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent e) {
+                int a = e.getActionMasked();
+                if (a == MotionEvent.ACTION_DOWN) {
+                    view.animate().scaleX(0.96f).scaleY(0.96f).setDuration(90).start();
+                } else if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) {
+                    view.animate().scaleX(1f).scaleY(1f).setDuration(160).start();
+                }
+                return false;
+            }
+        });
+    }
+
+    private LinearLayout card(float padDp) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setBackground(round(CARD, 20, CARD_STROKE));
+        c.setPadding(dp(padDp), dp(padDp), dp(padDp), dp(padDp));
+        return c;
+    }
+
+    private ScrollView scrollOf(LinearLayout col) {
+        ScrollView sv = new ScrollView(this);
+        sv.setFillViewport(true);
+        sv.setVerticalScrollBarEnabled(false);
+        sv.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        sv.addView(col, new ScrollView.LayoutParams(MATCH, WRAP));
+        return sv;
+    }
+
+    private LinearLayout pageColumn() {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setPadding(dp(20), dp(12), dp(20), dp(24));
+        return col;
+    }
+
+    // ------------------------------------------------------------------ kök yerleşim
+
+    private View buildRoot() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(BG);
+
+        FrameLayout content = new FrameLayout(this);
+        root.addView(content, new LinearLayout.LayoutParams(MATCH, 0, 1f));
+
+        pages[0] = buildHome();
+        pages[1] = buildModes();
+        pages[2] = buildSettings();
+        for (int i = 0; i < 3; i++) {
+            content.addView(pages[i], new FrameLayout.LayoutParams(MATCH, MATCH));
+        }
+        root.addView(buildNav(), new LinearLayout.LayoutParams(MATCH, WRAP));
+
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets in) {
+                int l, t, r, b;
+                if (Build.VERSION.SDK_INT >= 30) {
+                    Insets i = in.getInsets(WindowInsets.Type.systemBars()
+                            | WindowInsets.Type.displayCutout());
+                    l = i.left; t = i.top; r = i.right; b = i.bottom;
+                } else {
+                    l = in.getSystemWindowInsetLeft();
+                    t = in.getSystemWindowInsetTop();
+                    r = in.getSystemWindowInsetRight();
+                    b = in.getSystemWindowInsetBottom();
+                }
+                v.setPadding(l, t, r, b);
+                return in;
+            }
+        });
+        return root;
+    }
+
+    // ------------------------------------------------------------------ ana sayfa
+
+    private View buildHome() {
+        LinearLayout col = pageColumn();
+        homeColumn = col;
+
+        // Üst başlık
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView logo = tv("V", 22, Color.WHITE, true);
+        logo.setGravity(Gravity.CENTER);
+        GradientDrawable lg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{ELECTRIC, ACCENT});
+        lg.setCornerRadius(dp(13));
+        logo.setBackground(lg);
+        header.addView(logo, new LinearLayout.LayoutParams(dp(42), dp(42)));
+
+        LinearLayout names = new LinearLayout(this);
+        names.setOrientation(LinearLayout.VERTICAL);
+        names.setPadding(dp(12), 0, 0, 0);
+        names.addView(tv("VaxoDPI", 20, TEXT, true));
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(WRAP, WRAP);
+        sp.topMargin = dp(3);
+        names.addView(tv("DPI bypass arayüzü", 12, MUTED, false), sp);
+        header.addView(names, new LinearLayout.LayoutParams(0, WRAP, 1f));
+
+        TextView ver = tv(VERSION, 12, ACCENT, true);
+        ver.setPadding(dp(10), dp(5), dp(10), dp(5));
+        ver.setBackground(round(0x1A00B8FF, 12, 0x5500B8FF));
+        header.addView(ver);
+        col.addView(header, new LinearLayout.LayoutParams(MATCH, WRAP));
+
+        // DEMO rozeti
+        demoBadge = tv("DEMO – gösterilen değerler gerçek ölçüm değildir", 12, AMBER, true);
+        demoBadge.setGravity(Gravity.CENTER);
+        demoBadge.setPadding(dp(12), dp(8), dp(12), dp(8));
+        demoBadge.setBackground(round(0x1AFFB020, 12, 0x55FFB020));
+        demoBadge.setVisibility(View.GONE);
+        col.addView(demoBadge, lp(MATCH, WRAP, 14));
+
+        // Bağlantı halkası
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int ringSize = Math.min(dp(280), (int) (screenW * 0.72f));
+        ring = new RingView(this, density);
+        press(ring);
+        ring.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { onConnectClicked(); }
+        });
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ringSize, ringSize);
+        rp.gravity = Gravity.CENTER_HORIZONTAL;
+        rp.topMargin = dp(18);
+        col.addView(ring, rp);
+
+        statusTitle = tv("BAĞLI DEĞİL", 22, TEXT, true);
+        statusTitle.setGravity(Gravity.CENTER);
+        statusTitle.setLetterSpacing(0.08f);
+        col.addView(statusTitle, lp(MATCH, WRAP, 14));
+
+        statusSub = tv("", 13, MUTED, false);
+        statusSub.setGravity(Gravity.CENTER);
+        col.addView(statusSub, lp(MATCH, WRAP, 6));
+
+        connectBtn = tv("BAĞLAN", 16, Color.WHITE, true);
+        connectBtn.setGravity(Gravity.CENTER);
+        connectBtn.setLetterSpacing(0.1f);
+        connectBtn.setClickable(true);
+        press(connectBtn);
+        connectBtn.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { onConnectClicked(); }
+        });
+        col.addView(connectBtn, lp(MATCH, dp(56), 20));
+
+        // Bağlantı süresi
+        LinearLayout timerCard = card(16);
+        timerCard.setOrientation(LinearLayout.HORIZONTAL);
+        timerCard.setGravity(Gravity.CENTER_VERTICAL);
+        timerCard.addView(tv("Bağlantı süresi", 13, MUTED, false),
+                new LinearLayout.LayoutParams(0, WRAP, 1f));
+        timerText = tv("00:00:00", 22, MUTED, true);
+        timerText.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        timerCard.addView(timerText);
+        col.addView(timerCard, lp(MATCH, WRAP, 18));
+
+        // İstatistik kartları
+        LinearLayout row1 = new LinearLayout(this);
+        row1.setOrientation(LinearLayout.HORIZONTAL);
+        row1.addView(statCard("İNDİRME", 0), statParams(true));
+        row1.addView(statCard("YÜKLEME", 1), statParams(false));
+        col.addView(row1, lp(MATCH, WRAP, 12));
+
+        LinearLayout row2 = new LinearLayout(this);
+        row2.setOrientation(LinearLayout.HORIZONTAL);
+        row2.addView(statCard("PING", 2), statParams(true));
+        row2.addView(statCard("KULLANILAN VERİ", 3), statParams(false));
+        col.addView(row2, lp(MATCH, WRAP, 12));
+
+        // Altyapı bildirimi
+        noticeCard = card(16);
+        noticeCard.setBackground(round(0x120A84FF, 20, 0x3300B8FF));
+        noticeCard.addView(tv("Altyapı durumu", 13, ACCENT, true));
+        TextView nt = tv("Gerçek VPN/DPI altyapısı henüz bağlı değil. BAĞLAN'a basmak gerçek "
+                + "bir bağlantı kurmaz. Ağ ölçümü yapılmadığı için istatistikler \"--\" gösterilir.",
+                13, MUTED, false);
+        nt.setLineSpacing(0, 1.15f);
+        noticeCard.addView(nt, lp(MATCH, WRAP, 6));
+        col.addView(noticeCard, lp(MATCH, WRAP, 16));
+
+        return scrollOf(col);
+    }
+
+    private LinearLayout.LayoutParams statParams(boolean left) {
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, WRAP, 1f);
+        if (left) p.rightMargin = dp(6); else p.leftMargin = dp(6);
+        return p;
+    }
+
+    private LinearLayout statCard(String label, int idx) {
+        LinearLayout c = card(16);
+        c.addView(tv(label, 11, MUTED, true));
+        ((TextView) c.getChildAt(0)).setLetterSpacing(0.1f);
+
+        LinearLayout valRow = new LinearLayout(this);
+        valRow.setOrientation(LinearLayout.HORIZONTAL);
+        valRow.setGravity(Gravity.BOTTOM);
+        TextView v = tv("--", 26, TEXT, true);
+        valRow.addView(v);
+        TextView u = tv("", 12, MUTED, false);
+        u.setPadding(dp(5), 0, 0, dp(3));
+        valRow.addView(u);
+        c.addView(valRow, lp(MATCH, WRAP, 10));
+        statValues[idx] = v;
+        statUnits[idx] = u;
+        return c;
+    }
+
+    private void setStat(int idx, String value, String unit) {
+        statValues[idx].setText(value);
+        statUnits[idx].setText(unit);
+        statValues[idx].setAlpha(0.55f);
+        statValues[idx].animate().alpha(1f).setDuration(260).start();
+    }
+
+    private void clearStats() {
+        String[] units = {"Mbps", "Mbps", "ms", "MB"};
+        for (int i = 0; i < 4; i++) {
+            statValues[i].setText("--");
+            statUnits[i].setText(units[i]);
+            statValues[i].setAlpha(1f);
+        }
+    }
+
+    private void setStatsDemo() {
+        double dl = 35 + rnd.nextDouble() * 60;
+        double ul = 8 + rnd.nextDouble() * 25;
+        int ping = 18 + rnd.nextInt(40);
+        usedMb += (dl + ul) / 8.0; // saniyede aktarılan yaklaşık MB
+        setStat(0, String.format(Locale.US, "%.1f", dl), "Mbps");
+        setStat(1, String.format(Locale.US, "%.1f", ul), "Mbps");
+        setStat(2, String.valueOf(ping), "ms");
+        if (usedMb < 1024) {
+            setStat(3, String.format(Locale.US, "%.1f", usedMb), "MB");
+        } else {
+            setStat(3, String.format(Locale.US, "%.2f", usedMb / 1024.0), "GB");
+        }
+    }
+
+    private void playEntrance() {
+        int n = homeColumn.getChildCount();
+        for (int i = 0; i < n; i++) {
+            View c = homeColumn.getChildAt(i);
+            c.setAlpha(0f);
+            c.setTranslationY(dp(22));
+            c.animate().alpha(1f).translationY(0f).setDuration(420)
+                    .setStartDelay(70L * i)
+                    .setInterpolator(new DecelerateInterpolator()).start();
+        }
+    }
+
+    // ------------------------------------------------------------------ modlar sayfası
+
+    private View buildModes() {
+        LinearLayout col = pageColumn();
+        col.addView(tv("Modlar", 26, TEXT, true));
+        col.addView(tv("Bağlantı yöntemini seç", 13, MUTED, false), lp(WRAP, WRAP, 4));
+
+        LinearLayout info = card(16);
+        info.setBackground(round(0x14FFB020, 20, 0x44FFB020));
+        info.addView(tv("Henüz kullanılabilir değil", 13, AMBER, true));
+        TextView it = tv("Aşağıdaki modlar gerçek altyapı eklendiğinde etkinleşecek. "
+                + "Şu an seçilebilir bir mod yoktur.", 13, MUTED, false);
+        it.setLineSpacing(0, 1.15f);
+        info.addView(it, lp(MATCH, WRAP, 6));
+        col.addView(info, lp(MATCH, WRAP, 18));
+
+        col.addView(modeCard("Otomatik", "Ağa göre en uygun yöntemi seçer."), lp(MATCH, WRAP, 12));
+        col.addView(modeCard("DPI Bypass", "Paket parçalama tabanlı DPI atlatma."), lp(MATCH, WRAP, 12));
+        col.addView(modeCard("Tam VPN", "VpnService ile tüm trafiği tünelleme."), lp(MATCH, WRAP, 12));
+        return scrollOf(col);
+    }
+
+    private View modeCard(final String title, String desc) {
+        LinearLayout c = card(16);
+        c.setOrientation(LinearLayout.HORIZONTAL);
+        c.setGravity(Gravity.CENTER_VERTICAL);
+        c.setClickable(true);
+        press(c);
+
+        LinearLayout txt = new LinearLayout(this);
+        txt.setOrientation(LinearLayout.VERTICAL);
+        txt.addView(tv(title, 16, TEXT, true));
+        txt.addView(tv(desc, 12, MUTED, false), lp(WRAP, WRAP, 4));
+        c.addView(txt, new LinearLayout.LayoutParams(0, WRAP, 1f));
+
+        TextView chip = tv("YAKINDA", 10, MUTED, true);
+        chip.setLetterSpacing(0.1f);
+        chip.setPadding(dp(10), dp(5), dp(10), dp(5));
+        chip.setBackground(round(0x14FFFFFF, 10, 0x33FFFFFF));
+        c.addView(chip);
+
+        c.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                Toast.makeText(MainActivity.this,
+                        "\"" + title + "\" modu henüz kullanılabilir değil.",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+        return c;
+    }
+
+    // ------------------------------------------------------------------ ayarlar sayfası
+
+    private View buildSettings() {
+        LinearLayout col = pageColumn();
+        col.addView(tv("Ayarlar", 26, TEXT, true));
+        col.addView(tv("Uygulama ve önizleme seçenekleri", 13, MUTED, false), lp(WRAP, WRAP, 4));
+
+        // Demo anahtarı
+        LinearLayout demo = card(16);
+        LinearLayout demoRow = new LinearLayout(this);
+        demoRow.setOrientation(LinearLayout.HORIZONTAL);
+        demoRow.setGravity(Gravity.CENTER_VERTICAL);
+        demoRow.addView(tv("Önizleme modu (DEMO)", 16, TEXT, true),
+                new LinearLayout.LayoutParams(0, WRAP, 1f));
+        demoToggle = tv("KAPALI", 12, MUTED, true);
+        demoToggle.setLetterSpacing(0.1f);
+        demoToggle.setGravity(Gravity.CENTER);
+        demoToggle.setClickable(true);
+        press(demoToggle);
+        demoToggle.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { toggleDemo(); }
+        });
+        demoRow.addView(demoToggle, new LinearLayout.LayoutParams(dp(84), dp(34)));
+        demo.addView(demoRow, new LinearLayout.LayoutParams(MATCH, WRAP));
+        TextView dt = tv("Yalnızca arayüz durumlarını görmek içindir. Gerçek bağlantı kurmaz, "
+                + "trafiği tünellemez; değerler rastgele üretilir ve DEMO olarak işaretlenir.",
+                12, MUTED, false);
+        dt.setLineSpacing(0, 1.15f);
+        demo.addView(dt, lp(MATCH, WRAP, 8));
+        col.addView(demo, lp(MATCH, WRAP, 18));
+        updateToggle();
+
+        // Altyapı durumu
+        LinearLayout status = card(16);
+        status.addView(tv("Altyapı durumu", 13, ACCENT, true));
+        status.addView(infoRow("VpnService", "Eklenmedi", RED), lp(MATCH, WRAP, 12));
+        status.addView(infoRow("DPI bypass motoru", "Eklenmedi", RED), lp(MATCH, WRAP, 10));
+        status.addView(infoRow("Ağ ölçümü", "Yok", RED), lp(MATCH, WRAP, 10));
+        status.addView(infoRow("Sürüm", VERSION, TEXT), lp(MATCH, WRAP, 10));
+        col.addView(status, lp(MATCH, WRAP, 12));
+
+        // Yakında
+        LinearLayout soon = card(16);
+        soon.addView(tv("Yakında", 13, ACCENT, true));
+        soon.addView(infoRow("Uygulama bazlı bölme", "Yakında", MUTED), lp(MATCH, WRAP, 12));
+        soon.addView(infoRow("DNS ayarları", "Yakında", MUTED), lp(MATCH, WRAP, 10));
+        soon.addView(infoRow("Otomatik bağlan", "Yakında", MUTED), lp(MATCH, WRAP, 10));
+        col.addView(soon, lp(MATCH, WRAP, 12));
+
+        return scrollOf(col);
+    }
+
+    private View infoRow(String label, String value, int valueColor) {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.addView(tv(label, 14, TEXT, false), new LinearLayout.LayoutParams(0, WRAP, 1f));
+        r.addView(tv(value, 13, valueColor, true));
+        return r;
+    }
+
+    private void updateToggle() {
+        if (demoToggle == null) return;
+        if (demoMode) {
+            demoToggle.setText("AÇIK");
+            demoToggle.setTextColor(AMBER);
+            demoToggle.setBackground(round(0x1AFFB020, 17, 0x88FFB020));
+        } else {
+            demoToggle.setText("KAPALI");
+            demoToggle.setTextColor(MUTED);
+            demoToggle.setBackground(round(0x14FFFFFF, 17, 0x33FFFFFF));
+        }
+    }
+
+    private void toggleDemo() {
+        demoMode = !demoMode;
+        updateToggle();
+        if (state != State.DISCONNECTED) {
+            stopAll();
+        } else {
+            applyState(State.DISCONNECTED);
+        }
+    }
+
+    // ------------------------------------------------------------------ alt navigasyon
+
+    private View buildNav() {
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        wrap.setBackgroundColor(0xFF06080D);
+
+        View line = new View(this);
+        line.setBackgroundColor(0xFF121826);
+        wrap.addView(line, new LinearLayout.LayoutParams(MATCH, 1));
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(dp(8), dp(6), dp(8), dp(6));
+
+        String[] labels = {"Ana Sayfa", "Modlar", "Ayarlar"};
+        for (int i = 0; i < 3; i++) {
+            final int idx = i;
+            LinearLayout item = new LinearLayout(this);
+            item.setOrientation(LinearLayout.VERTICAL);
+            item.setGravity(Gravity.CENTER);
+            item.setPadding(0, dp(8), 0, dp(8));
+            item.setClickable(true);
+            item.setBackground(ripple(new ColorDrawable(Color.TRANSPARENT), 16));
+
+            IconView ic = new IconView(this, i, density);
+            item.addView(ic, new LinearLayout.LayoutParams(dp(26), dp(26)));
+            TextView lb = tv(labels[i], 11, MUTED, true);
+            item.addView(lb, lp(WRAP, WRAP, 4));
+            navIcons[i] = ic;
+            navLabels[i] = lb;
+
+            item.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { setPage(idx, true); }
+            });
+            row.addView(item, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        }
+        wrap.addView(row, new LinearLayout.LayoutParams(MATCH, WRAP));
+        return wrap;
+    }
+
+    private void setPage(int idx, boolean animate) {
+        if (idx == currentPage) return;
+        currentPage = idx;
+        for (int i = 0; i < 3; i++) {
+            boolean sel = (i == idx);
+            pages[i].setVisibility(sel ? View.VISIBLE : View.GONE);
+            navIcons[i].setColor(sel ? ACCENT : MUTED);
+            navLabels[i].setTextColor(sel ? ACCENT : MUTED);
+            navIcons[i].animate().scaleX(sel ? 1.15f : 1f).scaleY(sel ? 1.15f : 1f)
+                    .setDuration(180).start();
+        }
+        if (animate) {
+            View p = pages[idx];
+            p.setAlpha(0f);
+            p.setTranslationY(dp(14));
+            p.animate().alpha(1f).translationY(0f).setDuration(240)
+                    .setInterpolator(new DecelerateInterpolator()).start();
+        }
+    }
+
+    // ------------------------------------------------------------------ bağlantı mantığı
+
+    private void onConnectClicked() {
+        if (state == State.CONNECTING || state == State.CONNECTED) {
+            stopAll();
+            return;
+        }
+        if (backend.isAvailable()) {
+            // TODO (gerçek altyapı): Intent i = VpnService.prepare(this);
+            // i != null ise startActivityForResult(i, REQ_VPN) ile kullanıcı onayı alın,
+            // onayın ardından VpnService alt sınıfınızı başlatın ve durumu buradan güncelleyin.
+            return;
+        }
+        if (demoMode) {
+            startDemo();
+        } else {
+            Toast.makeText(this, "Gerçek bağlantı kurulmadı: " + backend.unavailableReason(),
+                    Toast.LENGTH_LONG).show();
+            shakeNotice();
+        }
+    }
+
+    private void shakeNotice() {
+        noticeCard.animate().cancel();
+        noticeCard.setTranslationX(0f);
+        ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
+        a.setDuration(380);
+        a.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override public void onAnimationUpdate(ValueAnimator va) {
+                float t = (Float) va.getAnimatedValue();
+                float amp = dp(8) * (1f - t);
+                noticeCard.setTranslationX((float) Math.sin(t * Math.PI * 6) * amp);
+            }
+        });
+        a.start();
+    }
+
+    private final Runnable demoConnect = new Runnable() {
+        @Override public void run() {
+            if (state != State.CONNECTING) return;
+            connectedAt = SystemClock.elapsedRealtime();
+            usedMb = 0;
+            applyState(State.CONNECTED);
+        }
+    };
+
+    private final Runnable ticker = new Runnable() {
+        @Override public void run() {
+            if (state != State.CONNECTED) return;
+            updateTimer();
+            if (demoMode) setStatsDemo();
+            handler.postDelayed(this, 1000);
+        }
+    };
+
+    private void startDemo() {
+        applyState(State.CONNECTING);
+        handler.removeCallbacks(demoConnect);
+        handler.postDelayed(demoConnect, 2200);
+    }
+
+    private void stopAll() {
+        handler.removeCallbacks(demoConnect);
+        handler.removeCallbacks(ticker);
+        applyState(State.DISCONNECTED);
+    }
+
+    private void updateTimer() {
+        if (state != State.CONNECTED) {
+            timerText.setText("00:00:00");
+            timerText.setTextColor(MUTED);
+            return;
+        }
+        long s = Math.max(0, (SystemClock.elapsedRealtime() - connectedAt) / 1000);
+        timerText.setText(String.format(Locale.US, "%02d:%02d:%02d",
+                s / 3600, (s / 60) % 60, s % 60));
+        timerText.setTextColor(TEXT);
+    }
+
+    private void applyState(State s) {
+        state = s;
+        handler.removeCallbacks(ticker);
+
+        int color;
+        String title, sub, btn;
+        switch (s) {
+            case CONNECTING:
+                color = ACCENT;
+                title = "BAĞLANIYOR…";
+                sub = "Önizleme animasyonu çalışıyor (DEMO)";
+                btn = "İPTAL";
+                break;
+            case CONNECTED:
+                color = GREEN;
+                title = "BAĞLI (DEMO)";
+                sub = "Bu bir önizlemedir; trafik tünellenmiyor";
+                btn = "BAĞLANTIYI KES";
+                break;
+            default:
+                color = SLATE;
+                title = "BAĞLI DEĞİL";
+                sub = demoMode ? "Önizleme modu açık – gerçek bağlantı kurulmaz"
+                        : "Gerçek VPN altyapısı henüz eklenmedi";
+                btn = "BAĞLAN";
+                break;
+        }
+
+        ring.setState(s, color);
+        statusTitle.setText(title);
+        statusTitle.setTextColor(s == State.DISCONNECTED ? TEXT : color);
+        statusSub.setText(sub);
+        statusTitle.setAlpha(0f);
+        statusTitle.animate().alpha(1f).setDuration(220).start();
+        connectBtn.setText(btn);
+        styleButton(s);
+
+        demoBadge.setVisibility(demoMode && s != State.DISCONNECTED ? View.VISIBLE : View.GONE);
+
+        if (s == State.CONNECTED && demoMode) {
+            setStatsDemo();
+        } else {
+            clearStats();
+        }
+        updateTimer();
+
+        if (s == State.CONNECTED && resumed) {
+            handler.postDelayed(ticker, 1000);
+        }
+    }
+
+    private void styleButton(State s) {
+        if (s == State.DISCONNECTED) {
+            GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{ELECTRIC, ACCENT});
+            g.setCornerRadius(dp(28));
+            connectBtn.setBackground(ripple(g, 28));
+            connectBtn.setTextColor(Color.WHITE);
+        } else if (s == State.CONNECTING) {
+            connectBtn.setBackground(ripple(round(0x1500B8FF, 28, ACCENT), 28));
+            connectBtn.setTextColor(ACCENT);
+        } else {
+            connectBtn.setBackground(ripple(round(0x15FF4D6A, 28, RED), 28));
+            connectBtn.setTextColor(RED);
+        }
+    }
+
+    // ------------------------------------------------------------------ özel görünümler
+
+    /** Animasyonlu neon bağlantı halkası. Animasyon yalnızca setRunning(true) iken çalışır. */
+    static class RingView extends View {
+        private final float d;
+        private final Paint trackP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint arcP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint glowP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint discP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint iconP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF rect = new RectF();
+        private final RectF iconRect = new RectF();
+        private final Path check = new Path();
+
+        private ValueAnimator anim;
+        private float phase = 0f;
+        private float breathe = 0f;
+        private boolean running = false;
+        private State st = State.DISCONNECTED;
+        private int color = SLATE;
+        private float cx, cy, radius, glowRadius;
+
+        RingView(Context c, float density) {
+            super(c);
+            d = density;
+            trackP.setStyle(Paint.Style.STROKE);
+            trackP.setStrokeWidth(9 * d);
+            arcP.setStyle(Paint.Style.STROKE);
+            arcP.setStrokeWidth(9 * d);
+            arcP.setStrokeCap(Paint.Cap.ROUND);
+            discP.setStyle(Paint.Style.FILL);
+            iconP.setStyle(Paint.Style.STROKE);
+            iconP.setStrokeCap(Paint.Cap.ROUND);
+            iconP.setStrokeJoin(Paint.Join.ROUND);
+            iconP.setStrokeWidth(4.5f * d);
+            setClickable(true);
+        }
+
+        void setState(State s, int c) {
+            st = s;
+            color = c;
+            rebuildShaders();
+            restart();
+            invalidate();
+        }
+
+        void setRunning(boolean r) {
+            running = r;
+            restart();
+        }
+
+        private void restart() {
+            if (anim != null) {
+                anim.removeAllUpdateListeners();
+                anim.cancel();
+                anim = null;
+            }
+            if (!running) return;
+            long dur = st == State.CONNECTING ? 1100L : (st == State.CONNECTED ? 4000L : 7000L);
+            anim = ValueAnimator.ofFloat(0f, 1f);
+            anim.setDuration(dur);
+            anim.setInterpolator(new LinearInterpolator());
+            anim.setRepeatCount(ValueAnimator.INFINITE);
+            anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                @Override public void onAnimationUpdate(ValueAnimator va) {
+                    phase = (Float) va.getAnimatedValue();
+                    breathe = 0.5f + 0.5f * (float) Math.sin(phase * 2 * Math.PI);
+                    invalidate();
+                }
+            });
+            anim.start();
+        }
+
+        private float sweepFor(State s) {
+            return s == State.CONNECTING ? 270f : (s == State.CONNECTED ? 90f : 110f);
+        }
+
+        private int withAlpha(int c, int a) {
+            return (c & 0x00FFFFFF) | (a << 24);
+        }
+
+        private void rebuildShaders() {
+            if (cx == 0f && cy == 0f) return;
+            float sw = sweepFor(st);
+            float p = sw / 360f;
+            arcP.setShader(new SweepGradient(cx, cy,
+                    new int[]{withAlpha(color, 0), color, color},
+                    new float[]{0f, p, 1f}));
+            glowP.setShader(new RadialGradient(cx, cy, glowRadius,
+                    new int[]{withAlpha(color, 120), withAlpha(color, 0)},
+                    new float[]{0.55f, 1f}, Shader.TileMode.CLAMP));
+        }
+
+        @Override
+        protected void onSizeChanged(int w, int h, int ow, int oh) {
+            super.onSizeChanged(w, h, ow, oh);
+            cx = w / 2f;
+            cy = h / 2f;
+            glowRadius = Math.min(w, h) / 2f;
+            radius = glowRadius - 16 * d;
+            rect.set(cx - radius, cy - radius, cx + radius, cy + radius);
+            rebuildShaders();
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            if (anim != null) {
+                anim.removeAllUpdateListeners();
+                anim.cancel();
+                anim = null;
+            }
+            super.onDetachedFromWindow();
+        }
+
+        @Override
+        protected void onAttachedToWindow() {
+            super.onAttachedToWindow();
+            restart();
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            if (radius <= 0f) return;
+
+            // Parıltı
+            int ga = st == State.CONNECTED ? (int) (110 + 145 * breathe)
+                    : (st == State.CONNECTING ? (int) (140 + 115 * breathe) : (int) (40 + 40 * breathe));
+            glowP.setAlpha(Math.min(255, ga));
+            canvas.drawCircle(cx, cy, glowRadius, glowP);
+
+            // İç disk
+            discP.setColor(0xFF070A10);
+            canvas.drawCircle(cx, cy, radius - 16 * d, discP);
+
+            // Halka zemini
+            if (st == State.CONNECTED) {
+                trackP.setColor(withAlpha(color, (int) (150 + 80 * breathe)));
+            } else {
+                trackP.setColor(0xFF121A29);
+            }
+            canvas.drawCircle(cx, cy, radius, trackP);
+
+            // Dönen ışık
+            canvas.save();
+            canvas.rotate(phase * 360f, cx, cy);
+            canvas.drawArc(rect, 0f, sweepFor(st), false, arcP);
+            canvas.restore();
+
+            // Simge
+            iconP.setColor(st == State.DISCONNECTED ? MUTED : color);
+            if (st == State.CONNECTING) {
+                iconP.setAlpha((int) (110 + 145 * breathe));
+            }
+            float ir = radius * 0.30f;
+            if (st == State.CONNECTED) {
+                check.reset();
+                check.moveTo(cx - ir * 0.8f, cy + ir * 0.05f);
+                check.lineTo(cx - ir * 0.2f, cy + ir * 0.65f);
+                check.lineTo(cx + ir * 0.85f, cy - ir * 0.6f);
+                canvas.drawPath(check, iconP);
+            } else {
+                iconRect.set(cx - ir, cy - ir + ir * 0.15f, cx + ir, cy + ir + ir * 0.15f);
+                canvas.drawArc(iconRect, 310f, 280f, false, iconP);
+                canvas.drawLine(cx, cy - ir * 1.05f, cx, cy - ir * 0.1f, iconP);
+            }
+        }
+    }
+
+    /** Alt navigasyon simgeleri (0: ana sayfa, 1: modlar, 2: ayarlar). */
+    static class IconView extends View {
+        private final int type;
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path path = new Path();
+        private final RectF r = new RectF();
+
+        IconView(Context c, int type, float density) {
+            super(c);
+            this.type = type;
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeJoin(Paint.Join.ROUND);
+            p.setColor(MUTED);
+        }
+
+        void setColor(int c) {
+            p.setColor(c);
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            float s = Math.min(getWidth(), getHeight()) / 24f;
+            canvas.save();
+            canvas.scale(s, s);
+            p.setStrokeWidth(1.9f);
+            if (type == 0) {
+                path.reset();
+                path.moveTo(2.5f, 11.5f);
+                path.lineTo(12f, 3.5f);
+                path.lineTo(21.5f, 11.5f);
+                canvas.drawPath(path, p);
+                path.reset();
+                path.moveTo(5f, 10f);
+                path.lineTo(5f, 20f);
+                path.lineTo(19f, 20f);
+                path.lineTo(19f, 10f);
+                canvas.drawPath(path, p);
+                path.reset();
+                path.moveTo(10f, 20f);
+                path.lineTo(10f, 14f);
+                path.lineTo(14f, 14f);
+                path.lineTo(14f, 20f);
+                canvas.drawPath(path, p);
+            } else if (type == 1) {
+                r.set(4f, 4f, 10f, 10f);
+                canvas.drawRoundRect(r, 2f, 2f, p);
+                r.set(14f, 4f, 20f, 10f);
+                canvas.drawRoundRect(r, 2f, 2f, p);
+                r.set(4f, 14f, 10f, 20f);
+                canvas.drawRoundRect(r, 2f, 2f, p);
+                r.set(14f, 14f, 20f, 20f);
+                canvas.drawRoundRect(r, 2f, 2f, p);
+            } else {
+                canvas.drawCircle(12f, 12f, 5.5f, p);
+                canvas.drawCircle(12f, 12f, 2f, p);
+                for (int i = 0; i < 8; i++) {
+                    double a = Math.toRadians(i * 45.0);
+                    float cs = (float) Math.cos(a);
+                    float sn = (float) Math.sin(a);
+                    canvas.drawLine(12f + cs * 7.5f, 12f + sn * 7.5f,
+                            12f + cs * 10f, 12f + sn * 10f, p);
+                }
+            }
+            canvas.restore();
+        }
+    }
+}
