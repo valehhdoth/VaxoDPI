@@ -49,6 +49,7 @@ public final class VaxoVpnService extends VpnService {
 
     private volatile boolean running;
     private volatile int proxyFd = -1;
+    private VaxoProxy vaxo;
     private boolean tunnelStarted;
     private int tunFdOwned = -1;
 
@@ -131,32 +132,11 @@ public final class VaxoVpnService extends VpnService {
         File configFile = copyConfig();
 
         // Önce yerel ByeDPI SOCKS5 sunucusunu başlat.
-        proxyFd = ByeDpiProxy.jniCreateSocketWithCommandLine(
-                buildArgs()
-        );
-
-        if (proxyFd < 0) {
-            throw new IOException("ByeDPI SOCKS5 sunucusu başlatılamadı.");
-        }
-
-        final int fd = proxyFd;
-
+        int strat = getSharedPreferences("vaxodpi", MODE_PRIVATE).getInt("strategy", 0);
+        flog("Motor: VaxoProxy, strateji " + strat);
+        vaxo = new VaxoProxy();
+        vaxo.start(1080, strat);
         running = true;
-
-        proxyThread = new Thread(() -> {
-            try {
-                int result = ByeDpiProxy.jniStartProxy(fd);
-                if (running) {
-                    flog("ByeDPI sonlandi. Kod: " + result);
-                }
-            } catch (Throwable e) {
-                if (running) {
-                    Log.e(TAG, "ByeDPI çalışırken hata oluştu", e);
-                }
-            }
-        }, "VaxoDPI-Proxy");
-
-        proxyThread.start();
 
         // Proxy soketinin hazırlanması için kısa süre tanı.
         Thread.sleep(250);
@@ -365,6 +345,11 @@ public final class VaxoVpnService extends VpnService {
                 Log.e(TAG, "Hev durdurulamadı", e);
             }
             tunnelStarted = false;
+        }
+
+        if (vaxo != null) {
+            vaxo.stop();
+            vaxo = null;
         }
 
         if (proxyFd >= 0) {
