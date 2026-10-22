@@ -23,12 +23,11 @@ public final class VaxoVpnService extends VpnService {
     public static final String EXTRA_MESSAGE = "message";
 
     public static final String[] STRATEGY_NAMES = {
-        "Varsayılan", "Split", "Disorder", "OOB"};
+        "Varsayılan", "Split", "Disorder"};
     public static final String[] STRATEGY_DESCS = {
-        "Disorder + otomatik + TLS parçalama (şu an çalışan)",
-        "Paketi bölme + otomatik + TLS parçalama",
-        "Geç sıralı gönderim + otomatik + TLS parçalama",
-        "Bant dışı veri + otomatik + TLS parçalama"};
+        "Düşük TTL'li ilk parça + TLS parçalama",
+        "Paketi bölme + TLS parçalama",
+        "SNI noktasında sıra bozma + TLS parçalama"};
 
     private void sendStatus(String state, String message) {
         Intent statusIntent = new Intent(ACTION_STATUS);
@@ -45,53 +44,8 @@ public final class VaxoVpnService extends VpnService {
     private boolean tunnelStarted;
     private int tunFdOwned = -1;
 
-    private final StringBuilder dbg = new StringBuilder();
-
     private synchronized void flog(String msg) {
         Log.i(TAG, msg);
-        dbg.append(new java.text.SimpleDateFormat("HH:mm:ss",
-                java.util.Locale.US).format(new java.util.Date()))
-           .append(' ').append(msg).append('\n');
-    }
-
-    private void startDiagnostics() {
-        new Thread(() -> {
-            try (java.net.Socket sock = new java.net.Socket()) {
-                sock.connect(new java.net.InetSocketAddress(
-                        "127.0.0.1", 1080), 3000);
-                sock.setSoTimeout(5000);
-                java.io.OutputStream o = sock.getOutputStream();
-                java.io.InputStream in = sock.getInputStream();
-                o.write(new byte[]{5, 1, 0});
-                o.flush();
-                byte[] r = new byte[2];
-                int n = in.read(r);
-                flog("SOCKS5 handshake: n=" + n + " yanit="
-                        + (n == 2 ? r[0] + "," + r[1] : "yok"));
-                o.write(new byte[]{5, 1, 0, 1, 1, 1, 1, 1, 0, 80});
-                o.flush();
-                byte[] c = new byte[10];
-                n = in.read(c);
-                flog("SOCKS5 CONNECT 1.1.1.1:80 n=" + n
-                        + " durum=" + (n > 1 ? c[1] : -1));
-            } catch (Throwable e) {
-                flog("SOCKS5 test hatasi: " + e);
-            }
-            for (int k = 0; k < 5 && running; k++) {
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                    return;
-                }
-                try {
-                    long[] st = TProxyService.TProxyGetStats();
-                    flog("HEV stats: " + java.util.Arrays.toString(st));
-                } catch (Throwable e) {
-                    flog("stats hatasi: " + e);
-                }
-            }
-            flog("tanilama bitti");
-        }, "VaxoDPI-Diag").start();
     }
 
     @Override
@@ -177,7 +131,6 @@ public final class VaxoVpnService extends VpnService {
         }
 
         flog("VPN ve tunel baslatma cagrilari tamamlandi");
-        startDiagnostics();
         startNotifUpdater();
         sendStatus("connected",
                 "Tünel başlatıldı; trafik aktarımı henüz doğrulanmadı.");
