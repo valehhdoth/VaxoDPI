@@ -6,10 +6,6 @@ android {
     namespace 'xyz.valeh.vaxodpi'
     compileSdk 35
 
-    externalNativeBuild {
-        cmake { path file("src/main/cpp/CMakeLists.txt") }
-    }
-
     defaultConfig {
         applicationId 'xyz.valeh.vaxodpi'
         minSdk 21

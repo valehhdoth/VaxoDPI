@@ -116,7 +116,7 @@ public class MainActivity extends Activity {
  {"YÜKLEME","UPLOAD","ОТДАЧА"},
  {"KULLANILAN VERİ","DATA USED","ТРАФИК"},
  {"Altyapı durumu","System status","Состояние системы"},
- {"ByeDPI altyapısı aktif. BAĞLAN'a basınca tünel kurulur. İstatistikler tünel sayaçlarından hesaplanır.","ByeDPI engine is active. Pressing CONNECT starts the tunnel. Statistics are calculated from tunnel counters.","Движок ByeDPI активен. Нажатие «ПОДКЛЮЧИТЬ» запускает туннель. Статистика считается по счётчикам туннеля."},
+ {"VaxoDPI motoru aktif. BAĞLAN'a basınca tünel kurulur. İstatistikler tünel sayaçlarından hesaplanır.","VaxoDPI engine is active. Pressing CONNECT starts the tunnel. Statistics are calculated from tunnel counters.","Движок VaxoDPI активен. Нажатие «ПОДКЛЮЧИТЬ» запускает туннель. Статистика считается по счётчикам туннеля."},
  {"Modlar","Modes","Режимы"},
  {"Bağlantı yöntemini seç","Choose connection method","Выберите способ подключения"},
  {"DPI stratejisi","DPI strategy","Стратегия DPI"},
@@ -137,7 +137,7 @@ public class MainActivity extends Activity {
  {"AÇIK","ON","ВКЛ"},
  {"Yalnızca arayüz durumlarını görmek içindir. Gerçek bağlantı kurmaz, trafiği tünellemez; değerler rastgele üretilir ve DEMO olarak işaretlenir.","For viewing interface states only. It makes no real connection and tunnels no traffic; values are random and marked as DEMO.","Только для просмотра состояний интерфейса. Реального подключения нет, трафик не туннелируется; значения случайны и помечены как ДЕМО."},
  {"DPI bypass motoru","DPI bypass engine","Движок обхода DPI"},
- {"Aktif (ByeDPI)","Active (ByeDPI)","Активен (ByeDPI)"},
+ {"Aktif (VaxoDPI)","Active (VaxoDPI)","Активен (VaxoDPI)"},
  {"Aktif","Active","Активно"},
  {"Ağ ölçümü","Network metrics","Сетевые метрики"},
  {"Sürüm","Version","Версия"},
@@ -525,7 +525,7 @@ public class MainActivity extends Activity {
         noticeCard = card(16);
         noticeCard.setBackground(round(0x12FFFFFF, 20, 0x33FFFFFF));
         noticeCard.addView(tv("Altyapı durumu", 13, ACCENT, true));
-        TextView nt = tv("ByeDPI altyapısı aktif. BAĞLAN'a basınca tünel kurulur. "
+        TextView nt = tv("VaxoDPI motoru aktif. BAĞLAN'a basınca tünel kurulur. "
                 + "İstatistikler tünel sayaçlarından hesaplanır.",
                 13, MUTED, false);
         nt.setLineSpacing(0, 1.15f);
@@ -849,7 +849,7 @@ public class MainActivity extends Activity {
         LinearLayout status = card(16);
         status.addView(tv("Altyapı durumu", 13, ACCENT, true));
         status.addView(infoRow("VPN", "Yakında", MUTED), lp(MATCH, WRAP, 12));
-        status.addView(infoRow("DPI bypass motoru", "Aktif (ByeDPI)", GREEN), lp(MATCH, WRAP, 10));
+        status.addView(infoRow("DPI bypass motoru", "Aktif (VaxoDPI)", GREEN), lp(MATCH, WRAP, 10));
         status.addView(infoRow("Ağ ölçümü", "Aktif", GREEN), lp(MATCH, WRAP, 10));
         status.addView(infoRow("Sürüm", VERSION, TEXT), lp(MATCH, WRAP, 10));
         col.addView(status, lp(MATCH, WRAP, 12));

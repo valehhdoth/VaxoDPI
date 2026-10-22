@@ -6,7 +6,6 @@ import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 
-import io.github.dovecoteescapee.byedpi.core.ByeDpiProxy;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -30,11 +29,6 @@ public final class VaxoVpnService extends VpnService {
         "Paketi bölme + otomatik + TLS parçalama",
         "Geç sıralı gönderim + otomatik + TLS parçalama",
         "Bant dışı veri + otomatik + TLS parçalama"};
-    public static final String[] STRATEGY_ARGS = {
-        "--disorder 1 --auto=torst --tlsrec 1+s",
-        "--split 1+s --auto=torst --tlsrec 1+s",
-        "--disorder 1+s --auto=torst --tlsrec 1+s",
-        "--oob 1+s --auto=torst --tlsrec 1+s"};
 
     private void sendStatus(String state, String message) {
         Intent statusIntent = new Intent(ACTION_STATUS);
@@ -45,10 +39,8 @@ public final class VaxoVpnService extends VpnService {
     }
 
     private ParcelFileDescriptor vpnInterface;
-    private Thread proxyThread;
 
     private volatile boolean running;
-    private volatile int proxyFd = -1;
     private VaxoProxy vaxo;
     private boolean tunnelStarted;
     private int tunFdOwned = -1;
@@ -131,7 +123,7 @@ public final class VaxoVpnService extends VpnService {
     private void startTunnel() throws Exception {
         File configFile = copyConfig();
 
-        // Önce yerel ByeDPI SOCKS5 sunucusunu başlat.
+        // Önce yerel VaxoProxy SOCKS5 sunucusunu başlat.
         int strat = getSharedPreferences("vaxodpi", MODE_PRIVATE).getInt("strategy", 0);
         flog("Motor: VaxoProxy, strateji " + strat);
         vaxo = new VaxoProxy();
@@ -292,17 +284,6 @@ public final class VaxoVpnService extends VpnService {
         t.start();
     }
 
-    private String[] buildArgs() {
-        int idx = getSharedPreferences("vaxodpi", MODE_PRIVATE)
-                .getInt("strategy", 0);
-        if (idx < 0 || idx >= STRATEGY_ARGS.length) idx = 0;
-        java.util.ArrayList<String> a = new java.util.ArrayList<>();
-        a.add("-i"); a.add("127.0.0.1"); a.add("-p"); a.add("1080");
-        for (String x : STRATEGY_ARGS[idx].split(" ")) a.add(x);
-        flog("Strateji: " + STRATEGY_NAMES[idx]);
-        return a.toArray(new String[0]);
-    }
-
     private File copyConfig() throws IOException {
         File output = new File(getFilesDir(), "vaxodpi-tunnel.yml");
 
@@ -350,27 +331,6 @@ public final class VaxoVpnService extends VpnService {
         if (vaxo != null) {
             vaxo.stop();
             vaxo = null;
-        }
-
-        if (proxyFd >= 0) {
-            try {
-                ByeDpiProxy.jniStopProxy(proxyFd);
-            } catch (Throwable e) {
-                Log.e(TAG, "ByeDPI durdurulamadı", e);
-            }
-            proxyFd = -1;
-        }
-
-        Thread threadToJoin = proxyThread;
-        proxyThread = null;
-
-        if (threadToJoin != null) {
-            threadToJoin.interrupt();
-            try {
-                threadToJoin.join(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
         }
 
         if (tunFdOwned >= 0) {
