@@ -54,7 +54,14 @@ import java.util.Random;
  */
 public class MainActivity extends Activity {
 
-    static final String VERSION = "v0.1";
+    private String appVersion() {
+        try {
+            return "v" + getPackageManager()
+                    .getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "v1.1";
+        }
+    }
 
     // Renkler
     static final int BG = 0xFF000000;
@@ -450,7 +457,7 @@ public class MainActivity extends Activity {
         names.addView(tv("DPI bypass arayüzü", 12, MUTED, false), sp);
         header.addView(names, new LinearLayout.LayoutParams(0, WRAP, 1f));
 
-        TextView ver = tv(VERSION, 12, ACCENT, true);
+        TextView ver = tv(appVersion(), 12, ACCENT, true);
         ver.setPadding(dp(10), dp(5), dp(10), dp(5));
         ver.setBackground(round(0x1AFFFFFF, 12, 0x55FFFFFF));
         header.addView(ver);
@@ -850,7 +857,7 @@ public class MainActivity extends Activity {
         status.addView(infoRow("VPN", "Yakında", MUTED), lp(MATCH, WRAP, 12));
         status.addView(infoRow("DPI bypass motoru", "Aktif (VaxoDPI)", GREEN), lp(MATCH, WRAP, 10));
         status.addView(infoRow("Ağ ölçümü", "Aktif", GREEN), lp(MATCH, WRAP, 10));
-        status.addView(infoRow("Sürüm", VERSION, TEXT), lp(MATCH, WRAP, 10));
+        status.addView(infoRow("Sürüm", appVersion(), TEXT), lp(MATCH, WRAP, 10));
         col.addView(status, lp(MATCH, WRAP, 12));
 
         // Yakında
