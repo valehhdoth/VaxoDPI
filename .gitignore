@@ -9,3 +9,9 @@ app/build/
 app/classes/
 app/dex/
 *.class
+
+*.jks
+*.keystore
+*.b64
+*.bak
+apk.dex

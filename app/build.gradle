@@ -7,6 +7,24 @@ android {
     compileSdk 35
     ndkVersion '27.2.12479018'
 
+    def ksPath = System.getenv('KEYSTORE_PATH')
+    signingConfigs {
+        release {
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (ksPath) { signingConfig signingConfigs.release }
+        }
+    }
+    lint { checkReleaseBuilds false }
+
     defaultConfig {
         applicationId 'xyz.valeh.vaxodpi'
         minSdk 21
