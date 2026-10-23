@@ -54,6 +54,72 @@ import java.util.Random;
  */
 public class MainActivity extends Activity {
 
+    private static final String APK_URL =
+            "https://github.com/valehhdoth/VaxoDPI/releases/latest/download/app-release.apk";
+
+    private static boolean isNewer(String a, String b) {
+        String[] x = a.split("\\."), y = b.split("\\.");
+        for (int i = 0; i < Math.max(x.length, y.length); i++) {
+            int p = 0, q = 0;
+            try { p = i < x.length ? Integer.parseInt(x[i].replaceAll("\\D", "")) : 0; } catch (Exception e) { }
+            try { q = i < y.length ? Integer.parseInt(y[i].replaceAll("\\D", "")) : 0; } catch (Exception e) { }
+            if (p != q) return p > q;
+        }
+        return false;
+    }
+
+    private void checkUpdate() {
+        final android.content.SharedPreferences sp = getSharedPreferences("vaxodpi", MODE_PRIVATE);
+        long now = System.currentTimeMillis();
+        if (now - sp.getLong("upd_t", 0L) < 12L * 3600 * 1000) return;
+        new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    java.net.HttpURLConnection c = (java.net.HttpURLConnection)
+                            new java.net.URL("https://api.github.com/repos/valehhdoth/VaxoDPI/releases/latest")
+                                    .openConnection();
+                    c.setConnectTimeout(6000);
+                    c.setReadTimeout(6000);
+                    c.setRequestProperty("Accept", "application/vnd.github+json");
+                    if (c.getResponseCode() != 200) return;
+                    java.io.InputStream in = c.getInputStream();
+                    java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[4096];
+                    int n;
+                    while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+                    java.util.regex.Matcher m = java.util.regex.Pattern
+                            .compile("\"tag_name\"\\s*:\\s*\"v?([0-9][0-9.]*)\"")
+                            .matcher(bo.toString("UTF-8"));
+                    if (!m.find()) return;
+                    final String latest = m.group(1);
+                    sp.edit().putLong("upd_t", System.currentTimeMillis()).apply();
+                    final String cur = appVersion().replace("v", "");
+                    if (!isNewer(latest, cur)) return;
+                    runOnUiThread(new Runnable() {
+                        @Override public void run() {
+                            if (isFinishing()) return;
+                            android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(
+                                    MainActivity.this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
+                            b.setTitle(L("Güncelleme var"));
+                            b.setMessage(L("Yeni sürüm çıktı: ") + "v" + latest);
+                            b.setPositiveButton(L("İndir"), new android.content.DialogInterface.OnClickListener() {
+                                @Override public void onClick(android.content.DialogInterface d, int w) {
+                                    try {
+                                        startActivity(new Intent(Intent.ACTION_VIEW,
+                                                android.net.Uri.parse(APK_URL)));
+                                    } catch (Exception ignored) { }
+                                }
+                            });
+                            b.setNegativeButton(L("Sonra"), null);
+                            b.show();
+                        }
+                    });
+                } catch (Throwable ignored) {
+                }
+            }
+        }, "VaxoDPI-Update").start();
+    }
+
     private String appVersion() {
         try {
             return "v" + getPackageManager()
@@ -148,6 +214,10 @@ public class MainActivity extends Activity {
  {"Log boş.","Log is empty.","Журнал пуст."},
  {"Log silindi.","Log deleted.","Журнал удалён."},
  {"Uygulama ara…","Search apps…","Поиск приложений…"},
+ {"Güncelleme var","Update available","Доступно обновление"},
+ {"Yeni sürüm çıktı: ","New version available: ","Вышла новая версия: "},
+ {"İndir","Download","Скачать"},
+ {"Sonra","Later","Позже"},
  {"Ayarlar","Settings","Настройки"},
  {"Uygulama ve önizleme seçenekleri","App and preview options","Параметры приложения и предпросмотра"},
  {"Önizleme modu (DEMO)","Preview mode (DEMO)","Режим предпросмотра (ДЕМО)"},
@@ -218,6 +288,7 @@ public class MainActivity extends Activity {
     protected void onPostCreate(android.os.Bundle b) {
         super.onPostCreate(b);
         translateTree(getWindow().getDecorView());
+        checkUpdate();
     }
 
     private final java.util.ArrayList<TextView> langChips = new java.util.ArrayList<>();
