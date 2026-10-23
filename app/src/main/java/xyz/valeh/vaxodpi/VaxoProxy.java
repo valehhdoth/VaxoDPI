@@ -23,6 +23,8 @@ final class VaxoProxy {
     private ExecutorService pool;
     private volatile boolean running;
     private int mode;
+    private static final java.util.Set<String> BLOCKED =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     void start(int port, int mode) throws IOException {
         this.mode = mode;
@@ -106,7 +108,34 @@ final class VaxoProxy {
             if (n < 0) { c.close(); r.close(); return; }
             OutputStream ro = r.getOutputStream();
             if (port == 443 && n > 5 && (first[0] & 0xff) == 0x16) {
-                desync(r, ro, first, n);
+                String key = target.getHostAddress();
+                if (BLOCKED.contains(key)) {
+                    desync(r, ro, first, n);
+                } else {
+                    ro.write(first, 0, n);
+                    ro.flush();
+                    byte[] resp = new byte[65536];
+                    int got = -1;
+                    r.setSoTimeout(2500);
+                    try {
+                        got = r.getInputStream().read(resp);
+                    } catch (IOException e) {
+                        got = -1;
+                    }
+                    if (got > 0) {
+                        r.setSoTimeout(0);
+                        out.write(resp, 0, got);
+                        out.flush();
+                    } else {
+                        BLOCKED.add(key);
+                        try { r.close(); } catch (Throwable ignored) {}
+                        r = new Socket();
+                        r.setTcpNoDelay(true);
+                        r.connect(new InetSocketAddress(target, port), 10000);
+                        ro = r.getOutputStream();
+                        desync(r, ro, first, n);
+                    }
+                }
             } else {
                 ro.write(first, 0, n);
             }
@@ -122,7 +151,7 @@ final class VaxoProxy {
     }
 
     private static void pipe(Socket from, Socket to) {
-        byte[] buf = new byte[16384];
+        byte[] buf = new byte[65536];
         try {
             InputStream i = from.getInputStream();
             OutputStream o = to.getOutputStream();
