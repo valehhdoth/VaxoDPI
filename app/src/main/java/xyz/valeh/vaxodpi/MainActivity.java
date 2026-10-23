@@ -142,6 +142,12 @@ public class MainActivity extends Activity {
  {"Tamam","OK","ОК"},
  {"Tümü","All","Все"},
  {"Değişiklik bir sonraki bağlanışta geçerli.","Applies on the next connection.","Применится при следующем подключении."},
+ {"Log kaydı","Logging","Журнал"},
+ {"Logu paylaş","Share log","Поделиться журналом"},
+ {"Logu sil","Delete log","Удалить журнал"},
+ {"Log boş.","Log is empty.","Журнал пуст."},
+ {"Log silindi.","Log deleted.","Журнал удалён."},
+ {"Uygulama ara…","Search apps…","Поиск приложений…"},
  {"Ayarlar","Settings","Настройки"},
  {"Uygulama ve önizleme seçenekleri","App and preview options","Параметры приложения и предпросмотра"},
  {"Önizleme modu (DEMO)","Preview mode (DEMO)","Режим предпросмотра (ДЕМО)"},
@@ -878,9 +884,44 @@ public class MainActivity extends Activity {
         appsCard.addView(appsRow, lp(MATCH, WRAP, 0));
         col.addView(appsCard, lp(MATCH, WRAP, 12));
 
+        LinearLayout toolsCard = card(16);
+        View dnsRow = infoRow("DNS ayarları", dnsName(), TEXT);
+        dnsRow.setClickable(true);
+        dnsRow.setPadding(0, dp(8), 0, dp(8));
+        dnsValue = (TextView) ((ViewGroup) dnsRow).getChildAt(1);
+        dnsRow.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { showDnsPicker(); }
+        });
+        toolsCard.addView(dnsRow, lp(MATCH, WRAP, 0));
+
+        View logRow = infoRow("Log kaydı", logOn() ? L("AÇIK") : L("KAPALI"), TEXT);
+        logRow.setClickable(true);
+        logRow.setPadding(0, dp(8), 0, dp(8));
+        logValue = (TextView) ((ViewGroup) logRow).getChildAt(1);
+        logRow.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { toggleLog(); }
+        });
+        toolsCard.addView(logRow, lp(MATCH, WRAP, 6));
+
+        View shareRow = infoRow("Logu paylaş", ">", TEXT);
+        shareRow.setClickable(true);
+        shareRow.setPadding(0, dp(8), 0, dp(8));
+        shareRow.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { shareLog(); }
+        });
+        toolsCard.addView(shareRow, lp(MATCH, WRAP, 6));
+
+        View delRow = infoRow("Logu sil", ">", TEXT);
+        delRow.setClickable(true);
+        delRow.setPadding(0, dp(8), 0, dp(8));
+        delRow.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { clearLog(); }
+        });
+        toolsCard.addView(delRow, lp(MATCH, WRAP, 6));
+        col.addView(toolsCard, lp(MATCH, WRAP, 12));
+
         LinearLayout soon = card(16);
         soon.addView(tv("Yakında", 13, ACCENT, true));
-        soon.addView(infoRow("DNS ayarları", "Yakında", MUTED), lp(MATCH, WRAP, 10));
         soon.addView(infoRow("Otomatik bağlan", "Yakında", MUTED), lp(MATCH, WRAP, 10));
         col.addView(soon, lp(MATCH, WRAP, 12));
 
@@ -891,6 +932,81 @@ public class MainActivity extends Activity {
         col.addView(about, lp(MATCH, WRAP, 12));
 
         return scrollOf(col);
+    }
+
+    private TextView dnsValue, logValue;
+    private static final String[] DNS_NAMES = {"Cloudflare", "Google", "Quad9", "AdGuard"};
+    private static final String[] DNS_ITEMS = {"Cloudflare (1.1.1.1)", "Google (8.8.8.8)",
+            "Quad9 (9.9.9.9)", "AdGuard (94.140.14.14)"};
+
+    private int dnsIdx() {
+        int i = getSharedPreferences("vaxodpi", MODE_PRIVATE).getInt("dns", 0);
+        return (i < 0 || i >= DNS_NAMES.length) ? 0 : i;
+    }
+
+    private String dnsName() {
+        return DNS_NAMES[dnsIdx()];
+    }
+
+    private void showDnsPicker() {
+        android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(
+                this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
+        b.setTitle(L("DNS ayarları"));
+        b.setSingleChoiceItems(DNS_ITEMS, dnsIdx(),
+                new android.content.DialogInterface.OnClickListener() {
+            @Override public void onClick(android.content.DialogInterface d, int which) {
+                getSharedPreferences("vaxodpi", MODE_PRIVATE).edit()
+                        .putInt("dns", which).apply();
+                if (dnsValue != null) dnsValue.setText(dnsName());
+                if (state != State.DISCONNECTED) {
+                    Toast.makeText(MainActivity.this,
+                            L("Değişiklik bir sonraki bağlanışta geçerli."),
+                            Toast.LENGTH_SHORT).show();
+                }
+                d.dismiss();
+            }
+        });
+        b.show();
+    }
+
+    private boolean logOn() {
+        return getSharedPreferences("vaxodpi", MODE_PRIVATE).getBoolean("log_on", false);
+    }
+
+    private void toggleLog() {
+        boolean on = !logOn();
+        getSharedPreferences("vaxodpi", MODE_PRIVATE).edit().putBoolean("log_on", on).apply();
+        if (logValue != null) logValue.setText(on ? L("AÇIK") : L("KAPALI"));
+    }
+
+    private void clearLog() {
+        new java.io.File(getFilesDir(), "vaxodpi.log").delete();
+        Toast.makeText(this, L("Log silindi."), Toast.LENGTH_SHORT).show();
+    }
+
+    private void shareLog() {
+        try {
+            java.io.File f = new java.io.File(getFilesDir(), "vaxodpi.log");
+            if (!f.exists() || f.length() == 0) {
+                Toast.makeText(this, L("Log boş."), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            long len = f.length();
+            int n = (int) Math.min(len, 60000);
+            byte[] buf = new byte[n];
+            try (java.io.RandomAccessFile r = new java.io.RandomAccessFile(f, "r")) {
+                r.seek(len - n);
+                r.readFully(buf);
+            }
+            String text = "VaxoDPI " + appVersion() + "\nAndroid " + Build.VERSION.RELEASE
+                    + " (" + Build.MODEL + ")\n\n" + new String(buf, "UTF-8");
+            Intent send = new Intent(Intent.ACTION_SEND);
+            send.setType("text/plain");
+            send.putExtra(Intent.EXTRA_TEXT, text);
+            startActivity(Intent.createChooser(send, "VaxoDPI log"));
+        } catch (Exception e) {
+            Toast.makeText(this, e.toString(), Toast.LENGTH_LONG).show();
+        }
     }
 
     private TextView appsValue;
@@ -911,51 +1027,86 @@ public class MainActivity extends Activity {
         Intent q = new Intent(Intent.ACTION_MAIN);
         q.addCategory(Intent.CATEGORY_LAUNCHER);
         java.util.List<android.content.pm.ResolveInfo> found = pm.queryIntentActivities(q, 0);
-        java.util.TreeMap<String, String> byLabel = new java.util.TreeMap<>();
+        java.util.ArrayList<String[]> items = new java.util.ArrayList<>();
         java.util.HashSet<String> seen = new java.util.HashSet<>();
         for (android.content.pm.ResolveInfo ri : found) {
             String pkg = ri.activityInfo.packageName;
             if (pkg.equals(getPackageName()) || !seen.add(pkg)) continue;
-            String label = String.valueOf(ri.loadLabel(pm));
-            byLabel.put(label.toLowerCase() + "\u0000" + pkg, label + "\u0000" + pkg);
+            items.add(new String[]{String.valueOf(ri.loadLabel(pm)), pkg});
         }
-        final String[] labels = new String[byLabel.size()];
-        final String[] pkgs = new String[byLabel.size()];
-        int i = 0;
-        for (String v : byLabel.values()) {
-            String[] parts = v.split("\u0000");
-            labels[i] = parts[0];
-            pkgs[i] = parts[1];
-            i++;
+        java.util.Collections.sort(items, (x, y) -> x[0].compareToIgnoreCase(y[0]));
+        final String[] labels = new String[items.size()];
+        final String[] pkgs = new String[items.size()];
+        for (int i = 0; i < items.size(); i++) {
+            labels[i] = items.get(i)[0];
+            pkgs[i] = items.get(i)[1];
         }
+        final java.util.HashSet<String> selected = new java.util.HashSet<>();
         java.util.Set<String> cur = getSharedPreferences("vaxodpi", MODE_PRIVATE)
                 .getStringSet("apps", null);
-        final boolean[] checked = new boolean[pkgs.length];
-        for (int k = 0; k < pkgs.length; k++) {
-            checked[k] = cur != null && cur.contains(pkgs[k]);
-        }
-        android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(
+        if (cur != null) selected.addAll(cur);
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(16), dp(8), dp(16), 0);
+        final android.widget.EditText search = new android.widget.EditText(this);
+        search.setHint(L("Uygulama ara…"));
+        search.setSingleLine(true);
+        search.setTextColor(Color.WHITE);
+        search.setHintTextColor(MUTED);
+        box.addView(search, new LinearLayout.LayoutParams(MATCH, WRAP));
+        final android.widget.ListView list = new android.widget.ListView(this);
+        list.setChoiceMode(android.widget.ListView.CHOICE_MODE_MULTIPLE);
+        box.addView(list, new LinearLayout.LayoutParams(MATCH, dp(360)));
+
+        final java.util.ArrayList<Integer> shown = new java.util.ArrayList<>();
+        final Runnable refresh = new Runnable() {
+            @Override public void run() {
+                String qs = search.getText().toString().trim().toLowerCase();
+                shown.clear();
+                java.util.ArrayList<String> names = new java.util.ArrayList<>();
+                for (int k = 0; k < labels.length; k++) {
+                    if (qs.isEmpty() || labels[k].toLowerCase().contains(qs)
+                            || pkgs[k].toLowerCase().contains(qs)) {
+                        shown.add(k);
+                        names.add(labels[k]);
+                    }
+                }
+                list.setAdapter(new android.widget.ArrayAdapter<String>(MainActivity.this,
+                        android.R.layout.simple_list_item_multiple_choice, names));
+                for (int j = 0; j < shown.size(); j++) {
+                    list.setItemChecked(j, selected.contains(pkgs[shown.get(j)]));
+                }
+            }
+        };
+        list.setOnItemClickListener(new android.widget.AdapterView.OnItemClickListener() {
+            @Override public void onItemClick(android.widget.AdapterView<?> p, View v, int pos, long id) {
+                String pk = pkgs[shown.get(pos)];
+                if (list.isItemChecked(pos)) selected.add(pk); else selected.remove(pk);
+            }
+        });
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a2) { }
+            @Override public void onTextChanged(CharSequence s, int st, int b2, int c) { refresh.run(); }
+            @Override public void afterTextChanged(android.text.Editable e) { }
+        });
+        refresh.run();
+
+        android.app.AlertDialog.Builder bd = new android.app.AlertDialog.Builder(
                 this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        b.setTitle(L("Uygulamaları seç"));
-        b.setMultiChoiceItems(labels, checked,
-                new android.content.DialogInterface.OnMultiChoiceClickListener() {
-            @Override public void onClick(android.content.DialogInterface d, int which, boolean on) {
-                checked[which] = on;
-            }
-        });
-        b.setPositiveButton(L("Tamam"), new android.content.DialogInterface.OnClickListener() {
+        bd.setTitle(L("Uygulamaları seç"));
+        bd.setView(box);
+        bd.setPositiveButton(L("Tamam"), new android.content.DialogInterface.OnClickListener() {
             @Override public void onClick(android.content.DialogInterface d, int w) {
-                java.util.HashSet<String> out = new java.util.HashSet<>();
-                for (int k = 0; k < pkgs.length; k++) if (checked[k]) out.add(pkgs[k]);
-                saveApps(out);
+                saveApps(new java.util.HashSet<String>(selected));
             }
         });
-        b.setNeutralButton(L("Tümü"), new android.content.DialogInterface.OnClickListener() {
+        bd.setNeutralButton(L("Tümü"), new android.content.DialogInterface.OnClickListener() {
             @Override public void onClick(android.content.DialogInterface d, int w) {
                 saveApps(new java.util.HashSet<String>());
             }
         });
-        b.show();
+        bd.show();
     }
 
     private void saveApps(java.util.Set<String> out) {

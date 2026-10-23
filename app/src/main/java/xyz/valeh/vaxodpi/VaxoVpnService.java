@@ -44,7 +44,23 @@ public final class VaxoVpnService extends VpnService {
     private boolean tunnelStarted;
     private int tunFdOwned = -1;
 
+    private void writeLog(String msg) {
+        try {
+            if (!getSharedPreferences("vaxodpi", MODE_PRIVATE)
+                    .getBoolean("log_on", false)) return;
+            java.io.File f = new java.io.File(getFilesDir(), "vaxodpi.log");
+            if (f.length() > 200000) f.delete();
+            try (java.io.FileWriter w = new java.io.FileWriter(f, true)) {
+                w.write(new java.text.SimpleDateFormat("MM-dd HH:mm:ss",
+                        java.util.Locale.US).format(new java.util.Date())
+                        + " " + msg + "\n");
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     private synchronized void flog(String msg) {
+        writeLog(msg);
         Log.i(TAG, msg);
     }
 
@@ -67,6 +83,7 @@ public final class VaxoVpnService extends VpnService {
             return START_STICKY;
         } catch (Exception e) {
             Log.e(TAG, "VPN başlatılamadı", e);
+            writeLog("HATA: " + e);
             sendStatus("error", "VPN başlatılamadı: " + e.getMessage());
             stopTunnel();
             stopSelf();
@@ -95,7 +112,11 @@ public final class VaxoVpnService extends VpnService {
         // uyumlu bir istemci adresi kullan.
         builder.addAddress("198.18.0.2", 15);
         builder.addRoute("0.0.0.0", 0);
-        builder.addDnsServer("1.1.1.1");
+        String[] dnsList = {"1.1.1.1", "8.8.8.8", "9.9.9.9", "94.140.14.14"};
+        int di = getSharedPreferences("vaxodpi", MODE_PRIVATE).getInt("dns", 0);
+        if (di < 0 || di >= dnsList.length) di = 0;
+        builder.addDnsServer(dnsList[di]);
+        flog("DNS: " + dnsList[di]);
 
         // VPN'in kendi SOCKS5 bağlantılarının tünele dönmesini önle.
         // Bunun sonucu olarak VaxoDPI uygulamasının kendi trafiği
