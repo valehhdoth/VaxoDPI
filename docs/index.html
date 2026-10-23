@@ -2,6 +2,11 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VaxoDPI – Android DPI bypass</title>
+<meta property="og:title" content="VaxoDPI">
+<meta property="og:description" content="Open what is blocked. Android DPI bypass: no root, no remote server, no analytics.">
+<meta property="og:image" content="https://vaxodpi.valeh.xyz/og.jpg">
+<meta property="og:url" content="https://vaxodpi.valeh.xyz">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="description" content="VaxoDPI regains access to blocked sites and apps on Android. No root, no remote server, no analytics.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400;900&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
@@ -55,7 +60,7 @@ textarea{min-height:130px;resize:vertical}
 footer{padding:40px 0 60px;color:var(--mut);font-size:.85rem;border-top:1px solid var(--line)}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.cap{transition:none}}
 </style></head><body>
-<header><b class="dot">VaxoDPI</b><div class="lang"><button data-l="en">EN</button> <button data-l="tr">TR</button></div></header>
+<header><b class="dot">VaxoDPI</b><div class="lang"><button data-l="en">EN</button> <button data-l="tr">TR</button> <button data-l="ru">RU</button></div></header>
 
 <div class="hero">
 <h1 class="dot">VaxoDPI</h1>
@@ -119,23 +124,24 @@ how:"Nasıl çalışır",howp:"Android trafiğini telefonundaki bir tünele ilet
 s1:"İndir'e dokun ve APK'yı aç.",s2:"Bu kaynaktan kuruluma izin ver.",s3:"Play Protect uyarırsa Daha fazla ayrıntı, sonra Yine de yükle'ye dokun. Uygulama imzalıdır ama Play Store'da değildir.",s4:"VaxoDPI'yi aç ve Bağlan'a dokun.",
 faq:"Sorular",q1:"VPN mi bu?",a1:"Android'in VPN iznini kullanır ama uzak sunucu yoktur. IP adresini veya ülkeni değiştirmez.",q2:"İnterneti yavaşlatır mı?",a2:"Pek sayılmaz. Engelli olmayan siteler olduğu gibi geçer.",q3:"Veri topluyor mu?",a3:"Hayır. İsteğe bağlı yerel log varsayılan olarak kapalıdır, site veya IP kaydetmez. Gizlilik politikasına bak.",q4:"Bir site hâlâ açılmıyor.",a4:"Modlar'dan başka bir strateji seç ve yeniden bağlan. Ayarlar'dan DNS de değiştirebilirsin.",q5:"Yasal mı?",a5:"Yasalar ülkeye göre değişir. Kendi ülkenin yasalarına uymak sana aittir.",
 msg:"Mesaj",name:"İsim",text:"Mesajın",send:"Mesajı gönder",priv:"Gizlilik politikası",legal:"Ülkenin yasalarına uygun kullan. Garanti verilmeden olduğu gibi sunulur."}};
+T.ru={hero:"Открой заблокированное. Одно нажатие, без root и аккаунта.",download:"Скачать для Android",source:"Исходный код",req:"Android 5.0 и новее. Бесплатно и с открытым кодом.",c0t:"Одно нажатие.",c0p:"Подключись, и обход заработает.",c1t:"Ничего не уходит с телефона.",c1p:"Нет VPN-сервера. Ваш IP не меняется.",c2t:"Только когда нужно.",c2p:"Обход применяется к заблокированным серверам, остальное остаётся быстрым.",abt:"О приложении",f1t:"Приватность по умолчанию",f1p:"Без аккаунтов, аналитики и рекламы. Сервера VaxoDPI, куда слать данные, просто нет.",f2t:"Выбор приложений",f2p:"Пропускайте через туннель только выбранные приложения, например Discord или Roblox.",f3t:"Три стратегии и четыре DNS",f3p:"Default, Split или Disorder. DNS Cloudflare, Google, Quad9 или AdGuard.",f4t:"Статистика онлайн",f4p:"Время соединения, скорость, пинг и трафик прямо на главном экране.",f5t:"Три языка",f5p:"English, Türkçe и Русский.",how:"Как это работает",howp:"Android передаёт трафик в туннель на вашем телефоне. Он попадает в VaxoProxy, наш собственный движок на Java, который разбивает TLS-рукопожатие и TCP-сегменты, чтобы глубокий анализ пакетов не распознал соединение. Затем трафик идёт напрямую на сайт.",inst:"Установка",s1:"Нажмите «Скачать» и откройте APK.",s2:"Разрешите установку из этого источника.",s3:"Если Play Protect предупредит, нажмите «Подробнее», затем «Всё равно установить». Приложение подписано, но его нет в Play Маркете.",s4:"Откройте VaxoDPI и нажмите «Подключить».",faq:"Вопросы",q1:"Это VPN?",a1:"Используется разрешение VPN в Android, но удалённого сервера нет. IP и страна не меняются.",q2:"Замедляет ли интернет?",a2:"Почти нет. Незаблокированные сайты проходят без изменений.",q3:"Собирает ли данные?",a3:"Нет. Необязательный локальный журнал выключен по умолчанию и не записывает сайты и IP. См. политику конфиденциальности.",q4:"Сайт всё равно не открывается.",a4:"В разделе «Режимы» выберите другую стратегию и переподключитесь. DNS можно сменить в настройках.",q5:"Это законно?",a5:"Законы зависят от страны. Соблюдать их должны вы сами.",msg:"Сообщение",send:"Отправить сообщение",priv:"Политика конфиденциальности",legal:"Используйте в соответствии с законами вашей страны. Предоставляется «как есть», без гарантий."};
 var D={};document.querySelectorAll("[data-i]").forEach(function(e){D[e.dataset.i]=e.innerHTML});
 var P={};document.querySelectorAll("[data-p]").forEach(function(e){P[e.dataset.p]=e.placeholder});
-var TP={name:"İsim",text:"Mesajın"};
+var TP={tr:{name:"İsim",text:"Mesajın"},ru:{name:"Имя",text:"Ваше сообщение"}};
 function setL(l){document.documentElement.lang=l;
-document.querySelectorAll("[data-i]").forEach(function(e){var k=e.dataset.i;e.innerHTML=(l=="tr"&&T.tr[k])?T.tr[k]:D[k]});
-document.querySelectorAll("[data-p]").forEach(function(e){e.placeholder=l=="tr"?TP[e.dataset.p]:P[e.dataset.p]});
+document.querySelectorAll("[data-i]").forEach(function(e){var k=e.dataset.i;e.innerHTML=(T[l]&&T[l][k])?T[l][k]:D[k]});
+document.querySelectorAll("[data-p]").forEach(function(e){e.placeholder=(TP[l]&&TP[l][e.dataset.p])||P[e.dataset.p]});
 document.querySelectorAll(".lang button").forEach(function(b){b.classList.toggle("on",b.dataset.l==l)});
 try{localStorage.setItem("l",l)}catch(x){}}
 document.querySelectorAll(".lang button").forEach(function(b){b.onclick=function(){setL(b.dataset.l)}});
-var sl="en";try{sl=localStorage.getItem("l")||((navigator.language||"").slice(0,2)=="tr"?"tr":"en")}catch(x){}
+var sl="en";try{sl=localStorage.getItem("l")||(({tr:"tr",ru:"ru"})[(navigator.language||"").slice(0,2)]||"en")}catch(x){}
 setL(sl);
 document.getElementById("dl").href=APK;
 document.getElementById("dl").setAttribute("download","VaxoDPI.apk");
 var FORM="valehxyz@gmail.com";
-var FM={en:{ok:"Message sent. Thank you!",err:"Could not send. Please try again.",busy:"Sending…"},tr:{ok:"Mesaj gönderildi. Teşekkürler!",err:"Gönderilemedi. Lütfen tekrar dene.",busy:"Gönderiliyor…"}};
+var FM={ru:{ok:"Сообщение отправлено. Спасибо!",err:"Не удалось отправить. Попробуйте ещё раз.",busy:"Отправка…"},en:{ok:"Message sent. Thank you!",err:"Could not send. Please try again.",busy:"Sending…"},tr:{ok:"Mesaj gönderildi. Teşekkürler!",err:"Gönderilemedi. Lütfen tekrar dene.",busy:"Gönderiliyor…"}};
 document.getElementById("f").onsubmit=function(e){e.preventDefault();
-var n=document.getElementById("n").value,m=document.getElementById("m").value,l=document.documentElement.lang=="tr"?"tr":"en",note=document.getElementById("mn"),b=e.target.querySelector("button");
+var n=document.getElementById("n").value,m=document.getElementById("m").value,l=FM[document.documentElement.lang]?document.documentElement.lang:"en",note=document.getElementById("mn"),b=e.target.querySelector("button");
 b.disabled=true;note.textContent=FM[l].busy;
 fetch("https://formsubmit.co/ajax/"+FORM,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({name:n,message:m,_subject:"VaxoDPI site message",_captcha:"false",_template:"table"})})
 .then(function(r){if(!r.ok)throw 0;note.textContent=FM[l].ok;e.target.reset()})

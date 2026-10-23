@@ -6,6 +6,8 @@
 
 ## Download
 
+Website: [vaxodpi.valeh.xyz](https://vaxodpi.valeh.xyz)
+
 Get the latest APK from the [Releases](https://github.com/valehhdoth/VaxoDPI/releases/latest) page.
 
 ## Features
