@@ -41,6 +41,7 @@ public final class VaxoVpnService extends VpnService {
 
     private volatile boolean running;
     private VaxoProxy vaxo;
+    private android.net.ConnectivityManager.NetworkCallback netCb;
     private boolean tunnelStarted;
     private int tunFdOwned = -1;
 
@@ -168,6 +169,7 @@ public final class VaxoVpnService extends VpnService {
 
         flog("VPN ve tunel baslatma cagrilari tamamlandi");
         startNotifUpdater();
+        startNetWatch();
         sendStatus("connected",
                 "Tünel başlatıldı; trafik aktarımı henüz doğrulanmadı.");
     }
@@ -229,6 +231,29 @@ public final class VaxoVpnService extends VpnService {
             }
         } catch (Throwable e) {
             flog("startForeground hatasi: " + e);
+        }
+    }
+
+    private void startNetWatch() {
+        if (android.os.Build.VERSION.SDK_INT < 24) return;
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                    getSystemService(CONNECTIVITY_SERVICE);
+            netCb = new android.net.ConnectivityManager.NetworkCallback() {
+                private boolean first = true;
+                @Override public void onAvailable(android.net.Network n) {
+                    if (first) { first = false; return; }
+                    VaxoProxy.resetBlocked();
+                    try {
+                        setUnderlyingNetworks(new android.net.Network[]{n});
+                    } catch (Throwable ignored) {
+                    }
+                    flog("Ag degisti, engelli listesi sifirlandi");
+                }
+            };
+            cm.registerDefaultNetworkCallback(netCb);
+        } catch (Throwable e) {
+            flog("Ag izleme hatasi: " + e);
         }
     }
 
@@ -295,6 +320,15 @@ public final class VaxoVpnService extends VpnService {
         flog("stopTunnel cagrildi");
         boolean wasRunning = running || tunnelStarted;
         running = false;
+
+        if (netCb != null) {
+            try {
+                ((android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE))
+                        .unregisterNetworkCallback(netCb);
+            } catch (Throwable ignored) {
+            }
+            netCb = null;
+        }
 
         Thread nthr = notifThread;
         notifThread = null;

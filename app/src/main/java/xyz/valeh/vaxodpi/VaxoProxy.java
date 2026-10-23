@@ -23,6 +23,10 @@ final class VaxoProxy {
     private ExecutorService pool;
     private volatile boolean running;
     private int mode;
+
+    static void resetBlocked() {
+        BLOCKED.clear();
+    }
     private static final java.util.Set<String> BLOCKED =
             java.util.concurrent.ConcurrentHashMap.newKeySet();
 

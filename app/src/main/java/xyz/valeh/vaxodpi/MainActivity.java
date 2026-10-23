@@ -68,10 +68,20 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    private void checkUpdate() {
+    private void checkUpdate() { checkUpdate(false); }
+
+    private void toastUi(final String m) {
+        runOnUiThread(new Runnable() {
+            @Override public void run() {
+                Toast.makeText(MainActivity.this, m, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void checkUpdate(final boolean manual) {
         final android.content.SharedPreferences sp = getSharedPreferences("vaxodpi", MODE_PRIVATE);
         long now = System.currentTimeMillis();
-        if (now - sp.getLong("upd_t", 0L) < 12L * 3600 * 1000) return;
+        if (!manual && now - sp.getLong("upd_t", 0L) < 12L * 3600 * 1000) return;
         new Thread(new Runnable() {
             @Override public void run() {
                 try {
@@ -81,7 +91,7 @@ public class MainActivity extends Activity {
                     c.setConnectTimeout(6000);
                     c.setReadTimeout(6000);
                     c.setRequestProperty("Accept", "application/vnd.github+json");
-                    if (c.getResponseCode() != 200) return;
+                    if (c.getResponseCode() != 200) { if (manual) toastUi(L("Kontrol edilemedi.")); return; }
                     java.io.InputStream in = c.getInputStream();
                     java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
                     byte[] buf = new byte[4096];
@@ -90,11 +100,11 @@ public class MainActivity extends Activity {
                     java.util.regex.Matcher m = java.util.regex.Pattern
                             .compile("\"tag_name\"\\s*:\\s*\"v?([0-9][0-9.]*)\"")
                             .matcher(bo.toString("UTF-8"));
-                    if (!m.find()) return;
+                    if (!m.find()) { if (manual) toastUi(L("Kontrol edilemedi.")); return; }
                     final String latest = m.group(1);
                     sp.edit().putLong("upd_t", System.currentTimeMillis()).apply();
                     final String cur = appVersion().replace("v", "");
-                    if (!isNewer(latest, cur)) return;
+                    if (!isNewer(latest, cur)) { if (manual) toastUi(L("Uygulama güncel.")); return; }
                     runOnUiThread(new Runnable() {
                         @Override public void run() {
                             if (isFinishing()) return;
@@ -114,8 +124,7 @@ public class MainActivity extends Activity {
                             b.show();
                         }
                     });
-                } catch (Throwable ignored) {
-                }
+                } catch (Throwable ignored) { if (manual) toastUi(L("Kontrol edilemedi.")); }
             }
         }, "VaxoDPI-Update").start();
     }
@@ -218,6 +227,10 @@ public class MainActivity extends Activity {
  {"Yeni sürüm çıktı: ","New version available: ","Вышла новая версия: "},
  {"İndir","Download","Скачать"},
  {"Sonra","Later","Позже"},
+ {"Güncellemeleri kontrol et","Check for updates","Проверить обновления"},
+ {"Uygulama güncel.","App is up to date.","Приложение обновлено."},
+ {"Kontrol edilemedi.","Could not check.","Не удалось проверить."},
+ {"Kontrol ediliyor…","Checking…","Проверка…"},
  {"Ayarlar","Settings","Настройки"},
  {"Uygulama ve önizleme seçenekleri","App and preview options","Параметры приложения и предпросмотра"},
  {"Önizleme modu (DEMO)","Preview mode (DEMO)","Режим предпросмотра (ДЕМО)"},
@@ -989,6 +1002,18 @@ public class MainActivity extends Activity {
             @Override public void onClick(View v) { clearLog(); }
         });
         toolsCard.addView(delRow, lp(MATCH, WRAP, 6));
+
+        View updRow = infoRow("Güncellemeleri kontrol et", ">", TEXT);
+        updRow.setClickable(true);
+        updRow.setPadding(0, dp(8), 0, dp(8));
+        updRow.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                Toast.makeText(MainActivity.this, L("Kontrol ediliyor…"),
+                        Toast.LENGTH_SHORT).show();
+                checkUpdate(true);
+            }
+        });
+        toolsCard.addView(updRow, lp(MATCH, WRAP, 6));
         col.addView(toolsCard, lp(MATCH, WRAP, 12));
 
         LinearLayout soon = card(16);
