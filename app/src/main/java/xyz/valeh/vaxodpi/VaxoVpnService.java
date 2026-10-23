@@ -101,7 +101,22 @@ public final class VaxoVpnService extends VpnService {
         // Bunun sonucu olarak VaxoDPI uygulamasının kendi trafiği
         // bu VPN'in dışında kalır.
         try {
-            builder.addDisallowedApplication(getPackageName());
+            java.util.Set<String> sel = getSharedPreferences("vaxodpi", MODE_PRIVATE)
+                    .getStringSet("apps", null);
+            int added = 0;
+            if (sel != null) {
+                for (String pkg : sel) {
+                    try {
+                        builder.addAllowedApplication(pkg);
+                        added++;
+                    } catch (PackageManager.NameNotFoundException ignored) {
+                    }
+                }
+            }
+            if (added == 0) {
+                builder.addDisallowedApplication(getPackageName());
+            }
+            flog("Secili uygulama sayisi: " + added);
         } catch (PackageManager.NameNotFoundException e) {
             throw new IOException(
                     "Uygulama VPN dışında bırakılamadı.", e);

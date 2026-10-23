@@ -136,6 +136,12 @@ public class MainActivity extends Activity {
  {"Düşük TTL'li ilk parça + TLS parçalama","Low-TTL first fragment + TLS split","Фрагмент с малым TTL + TLS-фрагментация"},
  {"Paketi bölme + TLS parçalama","Packet split + TLS split","Разделение пакета + TLS-фрагментация"},
  {"SNI noktasında sıra bozma + TLS parçalama","Reordering at SNI + TLS split","Смена порядка на SNI + TLS-фрагментация"},
+ {"Tüm uygulamalar","All apps","Все приложения"},
+ {"uygulama seçili","apps selected","прилож. выбрано"},
+ {"Uygulamaları seç","Select apps","Выберите приложения"},
+ {"Tamam","OK","ОК"},
+ {"Tümü","All","Все"},
+ {"Değişiklik bir sonraki bağlanışta geçerli.","Applies on the next connection.","Применится при следующем подключении."},
  {"Ayarlar","Settings","Настройки"},
  {"Uygulama ve önizleme seçenekleri","App and preview options","Параметры приложения и предпросмотра"},
  {"Önizleme modu (DEMO)","Preview mode (DEMO)","Режим предпросмотра (ДЕМО)"},
@@ -861,9 +867,19 @@ public class MainActivity extends Activity {
         col.addView(status, lp(MATCH, WRAP, 12));
 
         // Yakında
+        LinearLayout appsCard = card(16);
+        View appsRow = infoRow("Uygulama bazlı bölme", appsValueText(), TEXT);
+        appsRow.setClickable(true);
+        appsRow.setPadding(0, dp(8), 0, dp(8));
+        appsValue = (TextView) ((ViewGroup) appsRow).getChildAt(1);
+        appsRow.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { showAppPicker(); }
+        });
+        appsCard.addView(appsRow, lp(MATCH, WRAP, 0));
+        col.addView(appsCard, lp(MATCH, WRAP, 12));
+
         LinearLayout soon = card(16);
         soon.addView(tv("Yakında", 13, ACCENT, true));
-        soon.addView(infoRow("Uygulama bazlı bölme", "Yakında", MUTED), lp(MATCH, WRAP, 12));
         soon.addView(infoRow("DNS ayarları", "Yakında", MUTED), lp(MATCH, WRAP, 10));
         soon.addView(infoRow("Otomatik bağlan", "Yakında", MUTED), lp(MATCH, WRAP, 10));
         col.addView(soon, lp(MATCH, WRAP, 12));
@@ -875,6 +891,81 @@ public class MainActivity extends Activity {
         col.addView(about, lp(MATCH, WRAP, 12));
 
         return scrollOf(col);
+    }
+
+    private TextView appsValue;
+
+    private int selectedAppCount() {
+        java.util.Set<String> s = getSharedPreferences("vaxodpi", MODE_PRIVATE)
+                .getStringSet("apps", null);
+        return s == null ? 0 : s.size();
+    }
+
+    private String appsValueText() {
+        int n = selectedAppCount();
+        return n == 0 ? L("Tüm uygulamalar") : n + " " + L("uygulama seçili");
+    }
+
+    private void showAppPicker() {
+        final android.content.pm.PackageManager pm = getPackageManager();
+        Intent q = new Intent(Intent.ACTION_MAIN);
+        q.addCategory(Intent.CATEGORY_LAUNCHER);
+        java.util.List<android.content.pm.ResolveInfo> found = pm.queryIntentActivities(q, 0);
+        java.util.TreeMap<String, String> byLabel = new java.util.TreeMap<>();
+        java.util.HashSet<String> seen = new java.util.HashSet<>();
+        for (android.content.pm.ResolveInfo ri : found) {
+            String pkg = ri.activityInfo.packageName;
+            if (pkg.equals(getPackageName()) || !seen.add(pkg)) continue;
+            String label = String.valueOf(ri.loadLabel(pm));
+            byLabel.put(label.toLowerCase() + "\u0000" + pkg, label + "\u0000" + pkg);
+        }
+        final String[] labels = new String[byLabel.size()];
+        final String[] pkgs = new String[byLabel.size()];
+        int i = 0;
+        for (String v : byLabel.values()) {
+            String[] parts = v.split("\u0000");
+            labels[i] = parts[0];
+            pkgs[i] = parts[1];
+            i++;
+        }
+        java.util.Set<String> cur = getSharedPreferences("vaxodpi", MODE_PRIVATE)
+                .getStringSet("apps", null);
+        final boolean[] checked = new boolean[pkgs.length];
+        for (int k = 0; k < pkgs.length; k++) {
+            checked[k] = cur != null && cur.contains(pkgs[k]);
+        }
+        android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(
+                this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
+        b.setTitle(L("Uygulamaları seç"));
+        b.setMultiChoiceItems(labels, checked,
+                new android.content.DialogInterface.OnMultiChoiceClickListener() {
+            @Override public void onClick(android.content.DialogInterface d, int which, boolean on) {
+                checked[which] = on;
+            }
+        });
+        b.setPositiveButton(L("Tamam"), new android.content.DialogInterface.OnClickListener() {
+            @Override public void onClick(android.content.DialogInterface d, int w) {
+                java.util.HashSet<String> out = new java.util.HashSet<>();
+                for (int k = 0; k < pkgs.length; k++) if (checked[k]) out.add(pkgs[k]);
+                saveApps(out);
+            }
+        });
+        b.setNeutralButton(L("Tümü"), new android.content.DialogInterface.OnClickListener() {
+            @Override public void onClick(android.content.DialogInterface d, int w) {
+                saveApps(new java.util.HashSet<String>());
+            }
+        });
+        b.show();
+    }
+
+    private void saveApps(java.util.Set<String> out) {
+        getSharedPreferences("vaxodpi", MODE_PRIVATE).edit()
+                .putStringSet("apps", out).apply();
+        if (appsValue != null) appsValue.setText(appsValueText());
+        if (state != State.DISCONNECTED) {
+            Toast.makeText(this, L("Değişiklik bir sonraki bağlanışta geçerli."),
+                    Toast.LENGTH_SHORT).show();
+        }
     }
 
     private View linkRow(String label, final int kind) {
