@@ -12,23 +12,26 @@ Get the latest APK from the [Releases](https://github.com/valehhdoth/VaxoDPI/rel
 
 - One-tap connect and disconnect
 - Connection timer and network metrics
-- **Modes:** Default, Split, Disorder, OOB. If a site doesn't open, pick another mode; changes apply on the next connection.
+- **Modes:** Default, Split, Disorder. If a site doesn't open, pick another mode; changes apply on the next connection.
 - Turkish, English and Russian interface
 - Demo (preview) mode for viewing interface states only. It makes no real connection.
 
 ### Coming soon
 
-VPN service, per-app split, DNS settings, auto-connect.
+Per-app split, DNS settings, auto-connect.
 
 ## How it works
 
-VaxoDPI uses the [ByeDPI](https://github.com/hufrea/byedpi) engine to get around DPI-based blocking. The engine alters how outgoing connection packets are sent (for example TLS split and out-of-order sending) so that DPI systems cannot recognize them. VaxoDPI adds an Android interface and mode selection on top of it.
+Android VpnService sends device traffic to the HEV Socks5 Tunnel, which forwards it to VaxoProxy, VaxoDPI's own SOCKS5 engine written in Java, listening on 127.0.0.1. For HTTPS connections VaxoProxy applies TLS record splitting and TCP segment tricks (split, low-TTL first fragment) only to servers that appear to be blocked, so unblocked sites are not slowed down. Traffic is not sent through any remote VPN server, and your IP address does not change. The app has no analytics or ads.
 
 ## Credits and license
 
-- VaxoDPI is based on [ByeDPI](https://github.com/hufrea/byedpi) by **hufrea**, licensed under the MIT License. ByeDPI's copyright and license notice is preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- VaxoDPI is not developed by the author of ByeDPI and is not an official ByeDPI release.
+- Tunnel: [HEV Socks5 Tunnel](https://github.com/heiher/hev-socks5-tunnel) by heiher, MIT License. Its license notice is preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - VaxoDPI's own code is released under the [MIT License](LICENSE).
+
+## Play Protect warning
+
+Android may show a Play Protect warning when installing the APK. This is expected: the app is signed but is not distributed through the Play Store. Tap "More details" and then "Install anyway".
 
 ## Disclaimer
 
