@@ -208,7 +208,7 @@ public class MainActivity extends Activity {
  {"Modlar","Modes","Режимы"},
  {"Bağlantı yöntemini seç","Choose connection method","Выберите способ подключения"},
  {"DPI stratejisi","DPI strategy","Стратегия DPI"},
- {"Siteler veya Discord açılmazsa başka bir strateji seç. Değişiklik bir sonraki bağlanışta geçerli olur.","If sites or Discord don't open, pick another strategy. Changes apply on the next connection.","Если сайты или Discord не открываются, выберите другую стратегию. Изменения вступят в силу при следующем подключении."},
+ {"Bir site açılmazsa başka bir strateji seç. Değişiklik bir sonraki bağlanışta geçerli olur.","If a site doesn't open, pick another strategy. Changes apply on the next connection.","Если сайт не открывается, выберите другую стратегию. Изменения вступят в силу при следующем подключении."},
  {"SEÇİLİ","SELECTED","ВЫБРАНО"},
  {"SEÇ","SELECT","ВЫБРАТЬ"},
  {"YAKINDA","SOON","СКОРО"},
@@ -799,7 +799,7 @@ public class MainActivity extends Activity {
         LinearLayout info = card(16);
         info.setBackground(round(0x14FFFFFF, 20, 0x44FFFFFF));
         info.addView(tv("DPI stratejisi", 13, AMBER, true));
-        TextView it = tv("Siteler veya Discord açılmazsa başka bir strateji seç. "
+        TextView it = tv("Bir site açılmazsa başka bir strateji seç. "
                 + "Değişiklik bir sonraki bağlanışta geçerli olur.", 13, MUTED, false);
         it.setLineSpacing(0, 1.15f);
         info.addView(it, lp(MATCH, WRAP, 6));
