@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/github/license/valehhdoth/VaxoDPI)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/valehhdoth/VaxoDPI?style=flat)](https://github.com/valehhdoth/VaxoDPI/stargazers)
 
-Android DPI bypass app. Open blocked sites and apps such as Discord and Roblox on networks that use deep packet inspection. No root, no remote server, no account, no analytics.
+Android DPI bypass app. Open blocked sites and apps on networks that use deep packet inspection. No root, no remote server, no account, no analytics.
 
 **Website:** [vaxodpi.valeh.xyz](https://vaxodpi.valeh.xyz) · **Download:** [latest release](https://github.com/valehhdoth/VaxoDPI/releases/latest)
 
@@ -70,7 +70,7 @@ Valeh · [valeh.xyz](https://valeh.xyz) · valehxyz@gmail.com · Discord: valeh.
 
 ## Türkçe
 
-Android için DPI atlatma uygulaması. Derin paket incelemesi (DPI) uygulanan ağlarda Discord ve Roblox gibi engellenen site ve uygulamaları açar. Root yok, uzak sunucu yok, hesap yok, analitik yok.
+Android için DPI atlatma uygulaması. Derin paket incelemesi (DPI) uygulanan ağlarda engellenen site ve uygulamaları açar. Root yok, uzak sunucu yok, hesap yok, analitik yok.
 
 **Özellikler:** tek dokunuşla bağlan/kes (bildirimden de), Java ile yazılmış kendi SOCKS5 motoru (VaxoProxy), yalnızca engelli görünen sunuculara atlatma, üç strateji (Varsayılan, Split, Disorder), aramalı uygulama seçimi, DNS seçimi (Cloudflare, Google, Quad9, AdGuard), canlı hız/ping/veri bilgisi, varsayılan olarak kapalı yerel log, güncelleme kontrolü, İngilizce/Türkçe/Rusça arayüz.
 
@@ -82,7 +82,7 @@ Android için DPI atlatma uygulaması. Derin paket incelemesi (DPI) uygulanan a�
 
 ## Русский
 
-Приложение для Android для обхода DPI. Открывает заблокированные сайты и приложения, например Discord и Roblox, в сетях с глубоким анализом пакетов. Без root, без удалённого сервера, без аккаунта и аналитики.
+Приложение для Android для обхода DPI. Открывает заблокированные сайты и приложения в сетях с глубоким анализом пакетов. Без root, без удалённого сервера, без аккаунта и аналитики.
 
 **Возможности:** подключение и отключение одним нажатием (в том числе из уведомления), собственный SOCKS5-движок на Java (VaxoProxy), обход только для серверов, которые выглядят заблокированными, три стратегии (Default, Split, Disorder), выбор приложений с поиском, выбор DNS (Cloudflare, Google, Quad9, AdGuard), скорость, пинг и трафик в реальном времени, необязательный локальный журнал (по умолчанию выключен), проверка обновлений, интерфейс на английском, турецком и русском.
 
