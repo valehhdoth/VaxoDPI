@@ -129,6 +129,12 @@ public class MainActivity extends Activity {
         }, "VaxoDPI-Update").start();
     }
 
+    private String errText(String m) {
+        if (m == null) return L("VPN hatası");
+        String d = m.replaceFirst("^VPN başlatılamadı: ?", "");
+        return L("VPN başlatılamadı") + (d.isEmpty() || d.equals("null") ? "" : ": " + L(d));
+    }
+
     private String appVersion() {
         try {
             return "v" + getPackageManager()
@@ -177,7 +183,7 @@ public class MainActivity extends Activity {
                 realServiceStarted = false;
                 applyState(State.DISCONNECTED);
                 Toast.makeText(MainActivity.this,
-                        message == null ? L("VPN hatası") : message,
+                        errText(message),
                         Toast.LENGTH_LONG).show();
             } else if ("disconnected".equals(status)) {
                 realServiceStarted = false;
@@ -231,6 +237,10 @@ public class MainActivity extends Activity {
  {"Uygulama güncel.","App is up to date.","Приложение обновлено."},
  {"Kontrol edilemedi.","Could not check.","Не удалось проверить."},
  {"Kontrol ediliyor…","Checking…","Проверка…"},
+ {"VPN başlatılamadı","VPN failed to start","Не удалось запустить VPN"},
+ {"Android VPN arayüzü oluşturulamadı.","Could not create the Android VPN interface.","Не удалось создать интерфейс VPN Android."},
+ {"Uygulama VPN dışında bırakılamadı.","Could not exclude the app from the VPN.","Не удалось исключить приложение из VPN."},
+ {"Hev tüneli başlatılamadı.","Could not start the tunnel.","Не удалось запустить туннель."},
  {"Ayarlar","Settings","Настройки"},
  {"Uygulama ve önizleme seçenekleri","App and preview options","Параметры приложения и предпросмотра"},
  {"Önizleme modu (DEMO)","Preview mode (DEMO)","Режим предпросмотра (ДЕМО)"},

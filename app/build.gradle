@@ -30,7 +30,7 @@ android {
         minSdk 21
         targetSdk 34
         versionCode Integer.parseInt(providers.environmentVariable('GITHUB_RUN_NUMBER').orElse('2').get())
-        versionName '1.4'
+        versionName '1.5'
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
     }
 }
