@@ -24,8 +24,37 @@ final class VaxoProxy {
     private volatile boolean running;
     private int mode;
 
+    private static volatile java.io.File store;
+
+    static void setStore(java.io.File f) {
+        store = f;
+        BLOCKED.clear();
+        try {
+            if (f != null && f.exists()) {
+                for (String line : new String(java.nio.file.Files.readAllBytes(f.toPath()),
+                        "UTF-8").split("\n")) {
+                    if (!line.trim().isEmpty()) BLOCKED.add(line.trim());
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static synchronized void saveBlocked() {
+        try {
+            java.io.File f = store;
+            if (f == null) return;
+            if (BLOCKED.size() > 500) BLOCKED.clear();
+            StringBuilder sb = new StringBuilder();
+            for (String k : BLOCKED) sb.append(k).append('\n');
+            java.nio.file.Files.write(f.toPath(), sb.toString().getBytes("UTF-8"));
+        } catch (Throwable ignored) {
+        }
+    }
+
     static void resetBlocked() {
         BLOCKED.clear();
+        saveBlocked();
     }
     private static final java.util.Set<String> BLOCKED =
             java.util.concurrent.ConcurrentHashMap.newKeySet();
@@ -132,6 +161,7 @@ final class VaxoProxy {
                         out.flush();
                     } else {
                         BLOCKED.add(key);
+                        saveBlocked();
                         try { r.close(); } catch (Throwable ignored) {}
                         r = new Socket();
                         r.setTcpNoDelay(true);

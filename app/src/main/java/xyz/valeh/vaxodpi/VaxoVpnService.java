@@ -98,6 +98,7 @@ public final class VaxoVpnService extends VpnService {
         // Önce yerel VaxoProxy SOCKS5 sunucusunu başlat.
         int strat = getSharedPreferences("vaxodpi", MODE_PRIVATE).getInt("strategy", 0);
         flog("Motor: VaxoProxy, strateji " + strat);
+        VaxoProxy.setStore(new java.io.File(getFilesDir(), "blocked.txt"));
         vaxo = new VaxoProxy();
         vaxo.start(1080, strat);
         running = true;
