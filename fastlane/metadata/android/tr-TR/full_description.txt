@@ -1,0 +1,7 @@
+VaxoDPI, derin paket incelemesi (DPI) ile engellenen site ve uygulamalara erişimi geri getirir. Uzak sunucu yoktur, IP adresin değişmez. Root, hesap, analitik ve reklam gerektirmez.
+
+Java ile yazılmış kendi SOCKS5 motorunu kullanır. Atlatma (TLS ve TCP bölme) yalnızca engelli görünen sunuculara uygulanır, diğer siteler yavaşlamaz.
+
+Özellikler: üç strateji (Varsayılan, Split, Disorder), aramalı uygulama seçimi, DNS seçimi (Cloudflare, Google, Quad9, AdGuard), canlı hız, ping ve veri bilgisi, bildirimden kontrol, varsayılan olarak kapalı yerel log, İngilizce, Türkçe ve Rusça arayüz.
+
+Sonuç operatöre göre değişir, her yerde çalışacağı garanti edilmez. Ülkenin yasalarına uygun kullan.

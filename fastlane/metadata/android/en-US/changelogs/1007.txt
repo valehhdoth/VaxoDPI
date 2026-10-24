@@ -1,0 +1,1 @@
+Version 1.7: F-Droid packaging files, fixed version code.

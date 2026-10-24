@@ -79,6 +79,14 @@ public class MainActivity extends Activity {
     }
 
     private void checkUpdate(final boolean manual) {
+        try {
+            String inst = getPackageManager().getInstallerPackageName(getPackageName());
+            if ("org.fdroid.fdroid".equals(inst) || "org.fdroid.basic".equals(inst)) {
+                if (manual) toastUi(L("Güncellemeler F-Droid üzerinden yapılır."));
+                return;
+            }
+        } catch (Throwable ignored) {
+        }
         final android.content.SharedPreferences sp = getSharedPreferences("vaxodpi", MODE_PRIVATE);
         long now = System.currentTimeMillis();
         if (!manual && now - sp.getLong("upd_t", 0L) < 12L * 3600 * 1000) return;
@@ -241,6 +249,7 @@ public class MainActivity extends Activity {
  {"Android VPN arayüzü oluşturulamadı.","Could not create the Android VPN interface.","Не удалось создать интерфейс VPN Android."},
  {"Uygulama VPN dışında bırakılamadı.","Could not exclude the app from the VPN.","Не удалось исключить приложение из VPN."},
  {"Hev tüneli başlatılamadı.","Could not start the tunnel.","Не удалось запустить туннель."},
+ {"Güncellemeler F-Droid üzerinden yapılır.","Updates are handled by F-Droid.","Обновления выполняет F-Droid."},
  {"Ayarlar","Settings","Настройки"},
  {"Uygulama ve önizleme seçenekleri","App and preview options","Параметры приложения и предпросмотра"},
  {"Önizleme modu (DEMO)","Preview mode (DEMO)","Режим предпросмотра (ДЕМО)"},

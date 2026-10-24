@@ -1,0 +1,7 @@
+VaxoDPI regains access to sites and apps blocked by deep packet inspection (DPI). It has no remote server, so your IP address does not change, and it needs no root, account, analytics or ads.
+
+It uses its own SOCKS5 engine written in Java. The bypass (TLS and TCP splitting) is applied only to servers that look blocked, so other sites are not slowed down.
+
+Features: three strategies (Default, Split, Disorder), per-app selection with search, DNS choice (Cloudflare, Google, Quad9, AdGuard), live speed, ping and data, notification controls, optional local log (off by default), English, Turkish and Russian interface.
+
+Results depend on your ISP and no strategy is guaranteed to work everywhere. Use it according to the laws of your country.
