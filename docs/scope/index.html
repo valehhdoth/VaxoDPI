@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VaxoScope – Android packet inspector</title>
+<meta name="description" content="VaxoScope shows which app connects to which server on Android. No root, no accounts, no analytics. Records PCAP files for Wireshark.">
+<meta property="og:title" content="VaxoScope">
+<meta property="og:description" content="Android packet inspector. No root, no accounts, no analytics.">
+<meta property="og:url" content="https://vaxodpi.valeh.xyz/scope/">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@400;900&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#000;--fg:#fff;--mut:#8c8c8c;--line:#2a2a2a;--card:#0d0d0d}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 1rem/1.65 Inter,system-ui,sans-serif}
+a{color:inherit}
+.dot{font-family:Doto,ui-monospace,monospace;font-weight:900;letter-spacing:.02em;line-height:1}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px}
+header{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px 22px;background:linear-gradient(#000,#0000)}
+header b{font-size:1.5rem}
+header b a{text-decoration:none}
+.swl{color:var(--mut);text-decoration:none;font-size:.8rem;border:1px solid var(--line);padding:5px 11px;border-radius:20px}
+.lang{display:flex;gap:6px}
+.lang button{background:none;border:1px solid var(--line);color:var(--mut);padding:6px 12px;border-radius:20px;font:inherit;font-size:.85rem;cursor:pointer}
+.lang button.on{color:#000;background:#fff;border-color:#fff}
+.hero{min-height:92svh;display:flex;flex-direction:column;justify-content:center;padding:90px 22px 40px;max-width:760px;margin:0 auto}
+.hero h1{font-size:clamp(3rem,15vw,7rem);margin:0 0 22px}
+.hero p{font-size:1.15rem;color:#c8c8c8;max-width:36ch;margin:0 0 30px}
+.btn{display:inline-flex;align-items:center;gap:10px;background:#fff;color:#000;border:0;border-radius:32px;padding:16px 30px;font:700 1rem Inter,sans-serif;text-decoration:none;cursor:pointer}
+.btn.alt{background:none;color:#fff;border:1px solid #555}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.small{color:var(--mut);font-size:.85rem;margin-top:14px}
+section.s{padding:70px 0;border-top:1px solid var(--line)}
+section.s h2{font-size:clamp(1.9rem,8vw,3rem);margin:0 0 26px}
+.grid{display:grid;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:20px 22px}
+.card h3{margin:0 0 6px;font-size:1.1rem}.card p{margin:0;color:#bdbdbd}
+p.t{color:#c8c8c8;margin:0}
+ul.lim{padding-left:20px;color:#c8c8c8;margin:0}
+ol{padding-left:20px;color:#c8c8c8}li{margin:8px 0}
+details{border-bottom:1px solid var(--line);padding:16px 0}
+summary{cursor:pointer;font-weight:500;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary:after{content:"+";float:right;color:var(--mut)}
+details[open] summary:after{content:"–"}
+details p{color:#bdbdbd;margin:10px 0 0}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid #fff;outline-offset:2px}
+footer{padding:40px 0 60px;color:var(--mut);font-size:.85rem;border-top:1px solid var(--line)}
+footer a{color:#c8c8c8}
+</style></head><body>
+<header>
+  <b class="dot"><a href="/scope/">VaxoScope</a></b>
+  <a class="swl" href="/">VaxoDPI</a>
+  <div class="lang"><button data-l="tr">TR</button><button data-l="en">EN</button><button data-l="ru">RU</button></div>
+</header>
+
+<div class="hero">
+  <h1 class="dot">VaxoScope</h1>
+  <p data-i="tag">See what your phone connects to.</p>
+  <p style="font-size:1rem;color:#9a9a9a" data-i="sub"></p>
+  <div class="row">
+    <a class="btn" id="dl" href="https://github.com/valehhdoth/VaxoScope/releases/latest" data-i="dl">Download APK</a>
+    <a class="btn alt" href="https://github.com/valehhdoth/VaxoScope" data-i="src">Source code</a>
+  </div>
+  <div class="small"><span id="ver"></span> <span data-i="note"></span></div>
+</div>
+
+<section class="s"><div class="wrap">
+  <h2 class="dot" data-i="f_h">Features</h2>
+  <div class="grid">
+    <div class="card"><h3 data-i="c1h"></h3><p data-i="c1p"></p></div>
+    <div class="card"><h3 data-i="c2h"></h3><p data-i="c2p"></p></div>
+    <div class="card"><h3 data-i="c3h"></h3><p data-i="c3p"></p></div>
+    <div class="card"><h3 data-i="c4h"></h3><p data-i="c4p"></p></div>
+    <div class="card"><h3 data-i="c5h"></h3><p data-i="c5p"></p></div>
+    <div class="card"><h3 data-i="c6h"></h3><p data-i="c6p"></p></div>
+    <div class="card"><h3 data-i="c7h"></h3><p data-i="c7p"></p></div>
+    <div class="card"><h3 data-i="c8h"></h3><p data-i="c8p"></p></div>
+  </div>
+</div></section>
+
+<section class="s"><div class="wrap">
+  <h2 class="dot" data-i="how_h">How it works</h2>
+  <p class="t" data-i="how_p"></p>
+</div></section>
+
+<section class="s"><div class="wrap">
+  <h2 class="dot" data-i="lim_h">What it does not do</h2>
+  <ul class="lim">
+    <li data-i="l1"></li><li data-i="l2"></li><li data-i="l3"></li><li data-i="l4"></li>
+  </ul>
+</div></section>
+
+<section class="s"><div class="wrap">
+  <h2 class="dot" data-i="ins_h">Install</h2>
+  <ol><li data-i="i1"></li><li data-i="i2"></li><li data-i="i3"></li></ol>
+</div></section>
+
+<section class="s"><div class="wrap">
+  <h2 class="dot">FAQ</h2>
+  <details><summary data-i="q1"></summary><p data-i="a1"></p></details>
+  <details><summary data-i="q2"></summary><p data-i="a2"></p></details>
+  <details><summary data-i="q3"></summary><p data-i="a3"></p></details>
+  <details><summary data-i="q4"></summary><p data-i="a4"></p></details>
+  <details><summary data-i="q5"></summary><p data-i="a5"></p></details>
+</div></section>
+
+<footer><div class="wrap">
+  <p>VaxoScope · MIT · <a href="https://github.com/valehhdoth/VaxoScope">GitHub</a> · <a href="/">VaxoDPI</a></p>
+  <p data-i="foot"></p>
+</div></footer>
+
+<script>
+var T={
+en:{title:"VaxoScope – Android packet inspector",tag:"See what your phone connects to.",
+sub:"A packet inspector for Android. No root, no accounts, no analytics. Everything stays on your phone.",
+dl:"Download APK",src:"Source code",note:"Android 5.0+. App names need Android 10+.",
+f_h:"Features",
+c1h:"Live connections",c1p:"Every connection grouped by app, with host names from DNS and TLS SNI.",
+c2h:"Packet inspector",c2p:"IP, TCP, UDP, DNS and TLS headers, a hex viewer and a TCP conversation view.",
+c3h:"PCAP export and import",c3p:"Record to .pcap and open it in Wireshark. Import .pcap and .pcapng files to inspect them offline.",
+c4h:"Filters and search",c4p:"Filter by protocol and search like tcp port 443, app chrome, country us, >1mb.",
+c5h:"Firewall",c5p:"Block an app or a host while the VPN is on. Ad and tracker domains are flagged.",
+c6h:"Who owns the IP",c6p:"Country, company and ASN of every address, from an offline database.",
+c7h:"DNS history and reports",c7p:"See which app asked for which domain, plus a 7-day usage report.",
+c8h:"Tile, widget, backup",c8p:"Quick settings tile, home screen widget, backup and restore. Turkish, English and Russian.",
+how_h:"How it works",
+how_p:"VaxoScope uses Android's VpnService. The VPN is local: packets are not sent to any server. Your phone's traffic is routed through the app, which reads and records it and then passes it on to the internet.",
+lim_h:"What it does not do",
+l1:"It does not decrypt HTTPS and installs no certificates. You see names, addresses, ports and sizes, not page contents.",
+l2:"It only sees this phone's traffic, and only while it is switched on.",
+l3:"QUIC and Private DNS are encrypted, so some names are missing.",
+l4:"IPv6 traffic is not routed through the tunnel yet.",
+ins_h:"Install",
+i1:"Download the APK with the button above.",
+i2:"Open it and allow installing from this source if Android asks.",
+i3:"Start VaxoScope, tap Start and accept the VPN request.",
+q1:"Is this a real VPN?",a1:"It uses Android's VPN interface, but nothing leaves your phone. There is no server and no account.",
+q2:"Does it send my data anywhere?",a2:"No. Recordings, reports and settings stay in the app's private storage. You decide when to export.",
+q3:"Why does it need the VPN permission?",a3:"Without root, Android only lets an app see other apps' traffic through the VPN interface.",
+q4:"Can I use it with another VPN?",a4:"Android allows one VPN at a time, so VaxoScope and another VPN cannot run together.",
+q5:"Is it related to Wireshark?",a5:"No, it is an independent project. Its PCAP files open in Wireshark. Wireshark is a trademark of the Wireshark Foundation.",
+foot:"VaxoScope is not affiliated with Wireshark. Tunnel engine: hev-socks5-tunnel (MIT). IP data: iptoasn.com (public domain)."},
+tr:{title:"VaxoScope – Android paket inceleyici",tag:"Telefonunun nereye bağlandığını gör.",
+sub:"Android için paket inceleyici. Root yok, hesap yok, analitik yok. Her şey telefonunda kalır.",
+dl:"APK'yı indir",src:"Kaynak kod",note:"Android 5.0+. Uygulama adları için Android 10+ gerekir.",
+f_h:"Özellikler",
+c1h:"Canlı bağlantılar",c1p:"Her bağlantı uygulamaya göre gruplanır, site adları DNS ve TLS SNI'dan gelir.",
+c2h:"Paket inceleyici",c2p:"IP, TCP, UDP, DNS ve TLS başlıkları, hex görüntüleyici ve TCP konuşma görünümü.",
+c3h:"PCAP dışa ve içe aktarma",c3p:"Trafiği .pcap olarak kaydet ve Wireshark'ta aç. .pcap ve .pcapng dosyalarını çevrimdışı incele.",
+c4h:"Filtre ve arama",c4p:"Protokole göre filtrele, şöyle ara: tcp port 443, app chrome, country us, >1mb.",
+c5h:"Güvenlik duvarı",c5p:"VPN açıkken bir uygulamayı ya da siteyi engelle. Reklam ve izleyici alan adları işaretlenir.",
+c6h:"IP kime ait",c6p:"Her adresin ülkesi, şirketi ve ASN'si, çevrimdışı veritabanından.",
+c7h:"DNS geçmişi ve rapor",c7p:"Hangi uygulama hangi alan adını sordu gör, ayrıca 7 günlük kullanım raporu.",
+c8h:"Kutucuk, widget, yedek",c8p:"Hızlı ayar kutucuğu, ana ekran widget'ı, yedekleme ve geri yükleme. Türkçe, İngilizce ve Rusça.",
+how_h:"Nasıl çalışır",
+how_p:"VaxoScope Android'in VpnService mekanizmasını kullanır. VPN yereldir: paketler hiçbir sunucuya gönderilmez. Telefonun trafiği uygulamadan geçer, uygulama onu okuyup kaydeder ve internete yoluna devam ettirir.",
+lim_h:"Yapmadıkları",
+l1:"HTTPS'i çözmez ve sertifika kurmaz. Adları, adresleri, portları ve boyutları görürsün, sayfa içeriğini görmezsin.",
+l2:"Yalnızca bu telefonun trafiğini görür ve yalnızca açıkken.",
+l3:"QUIC ve Private DNS şifrelidir, bu yüzden bazı adlar eksik kalır.",
+l4:"IPv6 trafiği henüz tünelden geçirilmez.",
+ins_h:"Kurulum",
+i1:"Yukarıdaki düğmeyle APK'yı indir.",
+i2:"Aç ve Android sorarsa bu kaynaktan kurulumuna izin ver.",
+i3:"VaxoScope'u aç, Aç'a bas ve VPN isteğini onayla.",
+q1:"Bu gerçek bir VPN mi?",a1:"Android'in VPN arayüzünü kullanır ama hiçbir şey telefonundan çıkmaz. Sunucu da hesap da yok.",
+q2:"Verilerimi bir yere gönderiyor mu?",a2:"Hayır. Kayıtlar, raporlar ve ayarlar uygulamanın özel alanında kalır. Dışa aktarmayı sen yaparsın.",
+q3:"Neden VPN izni istiyor?",a3:"Android, root olmadan başka uygulamaların trafiğini yalnızca VPN arayüzüyle görmeye izin verir.",
+q4:"Başka bir VPN ile birlikte kullanabilir miyim?",a4:"Android aynı anda tek VPN'e izin verir, bu yüzden VaxoScope ve başka bir VPN birlikte çalışamaz.",
+q5:"Wireshark ile ilgisi var mı?",a5:"Hayır, bağımsız bir proje. PCAP dosyaları Wireshark'ta açılır. Wireshark, Wireshark Foundation'ın markasıdır.",
+foot:"VaxoScope, Wireshark ile bağlantılı değildir. Tünel motoru: hev-socks5-tunnel (MIT). IP verisi: iptoasn.com (kamu malı)."},
+ru:{title:"VaxoScope – анализатор пакетов для Android",tag:"Смотрите, куда подключается ваш телефон.",
+sub:"Анализатор пакетов для Android. Без root, без аккаунтов, без аналитики. Всё остаётся на телефоне.",
+dl:"Скачать APK",src:"Исходный код",note:"Android 5.0+. Названия приложений — Android 10+.",
+f_h:"Возможности",
+c1h:"Живые соединения",c1p:"Все соединения по приложениям, имена хостов из DNS и TLS SNI.",
+c2h:"Инспектор пакетов",c2p:"Заголовки IP, TCP, UDP, DNS и TLS, hex-просмотр и вид TCP-диалога.",
+c3h:"Экспорт и импорт PCAP",c3p:"Запись в .pcap и открытие в Wireshark. Импорт .pcap и .pcapng для офлайн-анализа.",
+c4h:"Фильтры и поиск",c4p:"Фильтр по протоколу и поиск вроде tcp port 443, app chrome, country us, >1mb.",
+c5h:"Брандмауэр",c5p:"Блокируйте приложение или хост при включённом VPN. Рекламные и трекерные домены помечаются.",
+c6h:"Кому принадлежит IP",c6p:"Страна, компания и ASN каждого адреса из офлайн-базы.",
+c7h:"История DNS и отчёты",c7p:"Какое приложение какой домен запрашивало, плюс отчёт за 7 дней.",
+c8h:"Плитка, виджет, копия",c8p:"Плитка быстрых настроек, виджет, резервное копирование. Русский, английский и турецкий.",
+how_h:"Как это работает",
+how_p:"VaxoScope использует VpnService Android. VPN локальный: пакеты не уходят ни на какой сервер. Трафик телефона проходит через приложение, которое читает и записывает его, а затем отправляет в интернет.",
+lim_h:"Чего он не делает",
+l1:"Не расшифровывает HTTPS и не устанавливает сертификаты. Видны имена, адреса, порты и размеры, но не содержимое страниц.",
+l2:"Видит только трафик этого телефона и только когда включено.",
+l3:"QUIC и Private DNS зашифрованы, поэтому часть имён отсутствует.",
+l4:"Трафик IPv6 пока не проходит через туннель.",
+ins_h:"Установка",
+i1:"Скачайте APK кнопкой выше.",
+i2:"Откройте файл и, если Android спросит, разрешите установку из этого источника.",
+i3:"Откройте VaxoScope, нажмите «Старт» и подтвердите запрос VPN.",
+q1:"Это настоящий VPN?",a1:"Используется VPN-интерфейс Android, но ничего не покидает телефон. Нет ни сервера, ни аккаунта.",
+q2:"Отправляет ли он мои данные?",a2:"Нет. Записи, отчёты и настройки хранятся в приватном хранилище приложения. Экспорт — по вашему решению.",
+q3:"Зачем нужно разрешение VPN?",a3:"Без root Android позволяет видеть трафик других приложений только через VPN-интерфейс.",
+q4:"Можно ли использовать с другим VPN?",a4:"Android допускает один VPN одновременно, поэтому VaxoScope и другой VPN вместе не работают.",
+q5:"Связан ли он с Wireshark?",a5:"Нет, это независимый проект. Его файлы PCAP открываются в Wireshark. Wireshark — торговая марка Wireshark Foundation.",
+foot:"VaxoScope не связан с Wireshark. Движок туннеля: hev-socks5-tunnel (MIT). Данные IP: iptoasn.com (общественное достояние)."}
+};
+var L="en";
+try{L=localStorage.getItem("lang")||(navigator.language||"en").slice(0,2);}catch(e){L=(navigator.language||"en").slice(0,2);}
+if(!T[L])L="en";
+function ap(l){
+  L=l;
+  try{localStorage.setItem("lang",l);}catch(e){}
+  document.documentElement.lang=l;
+  document.title=T[l].title;
+  document.querySelectorAll("[data-i]").forEach(function(e){var v=T[l][e.getAttribute("data-i")];if(v!==undefined)e.textContent=v;});
+  document.querySelectorAll(".lang button").forEach(function(b){b.classList.toggle("on",b.getAttribute("data-l")===l);});
+}
+document.querySelectorAll(".lang button").forEach(function(b){b.addEventListener("click",function(){ap(b.getAttribute("data-l"));});});
+ap(L);
+fetch("https://api.github.com/repos/valehhdoth/VaxoScope/releases/latest").then(function(r){return r.ok?r.json():null;}).then(function(j){
+  if(!j)return;
+  var a=(j.assets||[]).filter(function(x){return /\.apk$/i.test(x.name);})[0];
+  if(a){document.getElementById("dl").href=a.browser_download_url;document.getElementById("ver").textContent=j.tag_name+" · "+(a.size/1048576).toFixed(1)+" MB ·";}
+}).catch(function(){});
+</script>
+</body></html>
